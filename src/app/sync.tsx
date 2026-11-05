@@ -1,13 +1,13 @@
 import { router } from 'expo-router';
 import * as Updates from 'expo-updates';
 import { useState } from 'react';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Card, Eyebrow, Ghost, H1, HeatButton, Icon, RoundButton, Screen, Sub } from '@/components/ui';
 import { FORM_URL, SHEET_ID } from '@/config';
 import { installedVersion, newAppInfo } from '@/lib/app-version';
 import { shortDate, timeAgo } from '@/lib/logic';
-import { syncAll, useSync } from '@/lib/sync';
+import { getPerson, setPerson, syncAll, useSync } from '@/lib/sync';
 import { colors, fonts } from '@/theme';
 
 function Status({ title, detail, problem, off }: { title: string; detail: string; problem?: boolean; off?: boolean }) {
@@ -80,6 +80,7 @@ function AppUpdates() {
 
 export default function Sync() {
   const s = useSync();
+  const [person, setDraft] = useState(getPerson);
   const routineDetail = !SHEET_ID
     ? 'Using the starter routine. Add your sheet to change it. See the README.'
     : s.sheetError
@@ -97,11 +98,24 @@ export default function Sync() {
   return (
     <Screen>
       <View style={styles.top}><RoundButton icon="back" label="Back" onPress={() => router.back()} /></View>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <H1>Sync and updates</H1>
         <Status title="Routine sheet" detail={routineDetail} problem={!!s.sheetError} off={!SHEET_ID} />
         <Status title="Log backup" detail={backupDetail} problem={!!s.backupError} off={!FORM_URL} />
         <HeatButton label={s.syncing ? 'REFRESHING…' : 'REFRESH NOW'} onPress={syncAll} />
+        <View style={{ gap: 6 }}>
+          <Eyebrow>YOUR NAME</Eyebrow>
+          <TextInput
+            accessibilityLabel="Your name"
+            value={person}
+            maxLength={40}
+            autoCapitalize="words"
+            onChangeText={(t) => { setDraft(t); setPerson(t); }}
+            placeholder="Labels your rows in the backup sheet"
+            placeholderTextColor={colors.muted}
+            style={styles.input}
+          />
+        </View>
         <Sub>Being offline in the gym is fine. Sets wait on your phone and send when you’re back online.</Sub>
         <AppUpdates />
       </ScrollView>
@@ -115,4 +129,5 @@ const styles = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   title: { fontFamily: fonts.semibold, fontSize: 15, color: colors.text },
   section: { marginTop: 10 },
+  input: { borderRadius: 16, padding: 13, backgroundColor: colors.glass, color: colors.text, fontFamily: fonts.body, fontSize: 16 },
 });

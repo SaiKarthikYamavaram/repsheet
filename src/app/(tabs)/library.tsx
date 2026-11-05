@@ -1,3 +1,4 @@
+import { ObserveInteractiveMarker } from 'expo-observe';
 import { router } from 'expo-router';
 import { Image, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 
@@ -31,6 +32,7 @@ export default function Library() {
   const sections = [...groups.keys()].sort().map((title) => ({ title, data: groups.get(title)! }));
   return (
     <Screen>
+      <ObserveInteractiveMarker />
       <SectionList
         sections={sections}
         keyExtractor={(e) => e.name}

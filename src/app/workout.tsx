@@ -1,4 +1,5 @@
 import { useKeepAwake } from 'expo-keep-awake';
+import { Observe } from 'expo-observe';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, Alert, Animated, Easing, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from 'react-native';
@@ -158,6 +159,7 @@ export default function WorkoutScreen() {
         return;
       }
       finishWorkout(loadActiveWorkout() ?? w);
+      Observe.logEvent('workout.finished', { attributes: { sets: doneCount, skippedSets: openCount } });
       flushOutbox();
       router.replace({ pathname: '/finish', params: { id: w.id } });
     };

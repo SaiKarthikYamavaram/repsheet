@@ -1,3 +1,4 @@
+import { Observe } from 'expo-observe';
 import { useSyncExternalStore } from 'react';
 
 import { FORM_URL, SHEET_ID } from '@/config';
@@ -81,6 +82,7 @@ export async function refreshRoutine() {
     update({ routine: built, fetchedAt, syncing: false, sheetError: null });
   } catch (e) {
     const offline = e instanceof TypeError || (e as Error).name === 'AbortError';
+    if (!offline) Observe.reportError(e);
     update({ syncing: false, sheetError: offline ? null : (e as Error).message });
   }
 }
@@ -107,7 +109,8 @@ export async function flushOutbox() {
     if (rows.length) {
       const ids = await entryIds();
       for (const row of rows) {
-        const payload: Record<string, string> = JSON.parse(row.payload);
+        // Added at send time, so sets logged before you enter your name still get labelled.
+        const payload: Record<string, string> = { ...JSON.parse(row.payload), person: getPerson() };
         const fields: Record<string, string> = {};
         for (const [question, value] of Object.entries(payload)) {
           if (!ids[question]) throw new Error(`Your form has no "${question}" question.`);
@@ -126,11 +129,18 @@ export async function flushOutbox() {
     update({ backupError: null });
   } catch (e) {
     const offline = e instanceof TypeError || (e as Error).name === 'AbortError';
+    if (!offline) Observe.reportError(e);
     update({ backupError: offline ? null : (e as Error).message });
   } finally {
     flushing = false;
     update({ waiting: outboxCount() });
   }
+}
+
+export const getPerson = () => getKv('person') ?? '';
+
+export function setPerson(name: string) {
+  setKv('person', name.trim().slice(0, 40));
 }
 
 export function syncAll() {

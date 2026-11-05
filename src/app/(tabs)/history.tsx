@@ -1,3 +1,4 @@
+import { ObserveInteractiveMarker } from 'expo-observe';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -106,6 +107,7 @@ export default function History() {
   const shown = day ? sessions.filter((w) => dayKey(w.finishedAt ?? w.startedAt) === day) : sessions;
   return (
     <Screen>
+      <ObserveInteractiveMarker />
       <FlatList
         data={shown}
         keyExtractor={(w) => w.id}

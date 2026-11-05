@@ -1,3 +1,4 @@
+import { ObserveInteractiveMarker } from 'expo-observe';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -62,6 +63,7 @@ export default function Progress() {
 
   return (
     <Screen>
+      <ObserveInteractiveMarker />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.spread}><H1>Progress</H1><SyncPill /></View>
         <Eyebrow>SHOWING</Eyebrow>

@@ -57,19 +57,25 @@ Edits to the sheet reach the app the next time it opens, or when you pull down o
 
 ## Back up your logs
 
-1. Create a Google Form with these ten **Short answer** questions, using these exact titles, all optional: `id`, `logged_at`, `type`, `day`, `exercise`, `set`, `weight_kg`, `reps`, `record`, `value_cm`.
+1. Create a Google Form with these eleven **Short answer** questions, using these exact titles, all optional: `id`, `logged_at`, `type`, `day`, `exercise`, `set`, `weight_kg`, `reps`, `record`, `value_cm`, `person`.
 2. In **Settings > Responses**, turn off **Collect email addresses** and **Limit to 1 response**, and make sure the form doesn't require sign-in.
 3. In the **Responses** tab, click **Link to Sheets** to create the backup sheet. Keep this sheet private.
 4. Click **Send**, choose the link icon, and copy the link into `FORM_URL` in `src/config.ts`.
 5. Publish an update.
 
+Each person enters their name once on the **Sync and updates** page, and it fills the `person` column, so people sharing the app can filter their own rows. Everyone on the same APK shares one routine sheet and one backup sheet, so anyone with access to the backup sheet can read everyone's logs.
+
 Each ticked set becomes one row when you finish a workout. Bodyweight and body measurements each add a row when you save them. If you're offline, rows wait on the phone and send later. Retries can occasionally repeat a row, and the `id` column lets you spot repeats. Anyone who gets the form link could add junk rows, but they can't read your data and it doesn't change what's on your phone.
+
+## Performance monitoring
+
+EAS Observe records startup and screen load times, finished-workout counts and sync errors, and shows them on the project's Observe tab at expo.dev. It collects from installed APKs only, not Expo Go, and it never receives your name or your lifts. To query from the terminal, run `bunx eas-cli@latest observe:metrics-summary`.
 
 ## Develop
 
 ```bash
 bun install
-bun run android     # needs Expo Go or a development build
+bun run android     # needs a development build, since expo-observe isn't in Expo Go
 bun run test
 bun run typecheck
 bun run templates   # rewrites sheet-templates/ from src/lib/starter.ts

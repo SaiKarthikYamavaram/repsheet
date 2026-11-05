@@ -1,15 +1,17 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useObserve } from 'expo-observe';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { LogValueSheet } from '@/components/log-value-sheet';
 import { Card, Eyebrow, Hint, HotText, Icon, Num, Ring, Screen, Sub, SyncPill } from '@/components/ui';
+import { FORM_URL } from '@/config';
 import { newAppInfo } from '@/lib/app-version';
 import { bodyweightSeries, lastLifts, loadActiveWorkout, loadStats, logBodyweight, startWorkout, volumeSince, Workout } from '@/lib/db';
 import { addWeightHint, Day, fmtKg, fmtVolume, nextDayIndex, shortDate, weekStart, weekStreak } from '@/lib/logic';
 import { requestRestAlerts } from '@/lib/rest-alert';
-import { flushOutbox, syncAll, useSync } from '@/lib/sync';
+import { flushOutbox, getPerson, syncAll, useSync } from '@/lib/sync';
 import { colors, fonts, heat, heatEnd, heatStart } from '@/theme';
 
 type Loaded = { active: Workout | null; finishedAt: number[]; lastOrder: number | null; record: string | null; volume: number; bw: number | null };
@@ -38,6 +40,7 @@ function findHint(day: Day) {
 
 export default function Today() {
   const sync = useSync();
+  const { markInteractive } = useObserve();
   const [data, setData] = useState(load);
   const [picked, setPicked] = useState<number | null>(null);
   const [bwOpen, setBwOpen] = useState(false);
@@ -46,6 +49,10 @@ export default function Today() {
     setData(load());
     setPicked(null);
   }, []));
+
+  useEffect(() => {
+    markInteractive();
+  }, [markInteractive]);
 
   const { days, weeklyTarget } = sync.routine;
   const now = Date.now();
@@ -56,6 +63,7 @@ export default function Today() {
   const doneSoFar = data.active ? data.active.items.flatMap((i) => i.sets).filter((s) => s.doneAt).length : 0;
 
   const newApp = newAppInfo(sync.routine);
+  const person = getPerson();
 
   const go = () => {
     requestRestAlerts();
@@ -79,6 +87,12 @@ export default function Today() {
           <Text style={styles.date}>{shortDate(now)}</Text>
           <SyncPill />
         </View>
+
+        {!!FORM_URL && !person && (
+          <Pressable accessibilityRole="button" onPress={() => router.push('/sync')}>
+            <Hint title="Add your name" detail="It labels your rows in the backup sheet." />
+          </Pressable>
+        )}
 
         {newApp.needed && (
           <Pressable accessibilityRole={newApp.url ? 'link' : undefined} disabled={!newApp.url} onPress={() => Linking.openURL(newApp.url)}>
