@@ -25,6 +25,7 @@ Edits to the sheet reach the app the next time it opens, or when you pull down o
 | `muscle` | Group shown in the Library. |
 | `video_url` | YouTube link. Can be empty. |
 | `cues` | Form reminder. Can be empty. |
+| `equipment` | Optional. Use `barbell` to show the plate calculator for this exercise. |
 
 **routine** has one row per exercise, in the order you do them.
 
@@ -37,22 +38,25 @@ Edits to the sheet reach the app the next time it opens, or when you pull down o
 | `rep_min`, `rep_max` | Target rep range. Hitting `rep_max` on every set triggers the add-weight hint. |
 | `rest_sec` | Rest timer length in seconds. |
 | `increment_kg` | How much + and − change the weight, and how much the hint adds. |
+| `superset` | Optional. Give neighbouring rows the same label, such as `A`, to pair them. The app moves between them with no rest, then rests after each round. |
 
 **settings**
 
 | Key | Meaning |
 | --- | --- |
 | `weekly_target` | Workouts per week. Sets the Today ring and the streak. Default 4. |
+| `bar_kg` | Your bar's weight, for plates and warm-ups. Default 20. |
+| `plate_kg` | A plate size you have. Add one row per size. Defaults to 25, 20, 15, 10, 5, 2.5 and 1.25. |
 
 ## Back up your logs
 
-1. Create a Google Form with these nine **Short answer** questions, using these exact titles, all optional: `id`, `logged_at`, `type`, `day`, `exercise`, `set`, `weight_kg`, `reps`, `record`.
+1. Create a Google Form with these ten **Short answer** questions, using these exact titles, all optional: `id`, `logged_at`, `type`, `day`, `exercise`, `set`, `weight_kg`, `reps`, `record`, `value_cm`.
 2. In **Settings > Responses**, turn off **Collect email addresses** and **Limit to 1 response**, and make sure the form doesn't require sign-in.
 3. In the **Responses** tab, click **Link to Sheets** to create the backup sheet. Keep this sheet private.
 4. Click **Send**, choose the link icon, and copy the link into `FORM_URL` in `src/config.ts`.
 5. Publish an update.
 
-Each ticked set becomes one row when you finish a workout. If you're offline, rows wait on the phone and send later. Retries can occasionally repeat a row, and the `id` column lets you spot repeats. Anyone who gets the form link could add junk rows, but they can't read your data and it doesn't change what's on your phone.
+Each ticked set becomes one row when you finish a workout. Bodyweight and body measurements each add a row when you save them. If you're offline, rows wait on the phone and send later. Retries can occasionally repeat a row, and the `id` column lets you spot repeats. Anyone who gets the form link could add junk rows, but they can't read your data and it doesn't change what's on your phone.
 
 ## Develop
 

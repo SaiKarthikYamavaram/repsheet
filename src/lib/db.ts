@@ -24,7 +24,16 @@ db.execSync(`
   CREATE TABLE IF NOT EXISTS bodyweight (id TEXT PRIMARY KEY, logged_at INTEGER NOT NULL, kg REAL NOT NULL);
   CREATE TABLE IF NOT EXISTS notes (exercise TEXT PRIMARY KEY, text TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS outbox (id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at INTEGER NOT NULL);
+  CREATE TABLE IF NOT EXISTS measurements (id TEXT PRIMARY KEY, part TEXT NOT NULL, logged_at INTEGER NOT NULL, cm REAL NOT NULL);
 `);
+
+// Each step upgrades phones that already have data, because updates arrive over the air.
+if ((db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version ?? 0) < 1) {
+  db.execSync(`
+    ALTER TABLE session_items ADD COLUMN superset TEXT NOT NULL DEFAULT '';
+    PRAGMA user_version = 1;
+  `);
+}
 
 export const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -62,8 +71,8 @@ export function lastLifts(exercise: string): Lift[] {
 
 function insertItem(sessionId: string, position: number, item: RoutineItem) {
   db.runSync(
-    'INSERT INTO session_items (session_id, position, exercise, rep_min, rep_max, rest_sec, increment_kg) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    sessionId, position, item.exercise, item.repMin, item.repMax, item.restSec, item.incrementKg,
+    'INSERT INTO session_items (session_id, position, exercise, rep_min, rep_max, rest_sec, increment_kg, superset) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    sessionId, position, item.exercise, item.repMin, item.repMax, item.restSec, item.incrementKg, item.superset,
   );
   prefillSets(lastLifts(item.exercise), item.sets, item.repMin).forEach((lift, i) => {
     db.runSync(
@@ -86,7 +95,7 @@ export function startWorkout(day: Day): string {
 type SessionRow = { id: string; day_order: number; day_name: string; started_at: number; finished_at: number | null; position: number };
 
 function loadRow(row: SessionRow): Workout {
-  const items = db.getAllSync<{ position: number; exercise: string; rep_min: number; rep_max: number; rest_sec: number; increment_kg: number }>(
+  const items = db.getAllSync<{ position: number; exercise: string; rep_min: number; rep_max: number; rest_sec: number; increment_kg: number; superset: string }>(
     'SELECT * FROM session_items WHERE session_id = ? ORDER BY position', row.id,
   );
   const sets = db.getAllSync<{ id: string; position: number; set_index: number; kg: number; reps: number; done_at: number | null; is_record: number }>(
@@ -95,7 +104,7 @@ function loadRow(row: SessionRow): Workout {
   return {
     id: row.id, dayOrder: row.day_order, dayName: row.day_name, startedAt: row.started_at, finishedAt: row.finished_at, position: row.position,
     items: items.map((i) => ({
-      position: i.position, exercise: i.exercise, repMin: i.rep_min, repMax: i.rep_max, restSec: i.rest_sec, incrementKg: i.increment_kg,
+      position: i.position, exercise: i.exercise, repMin: i.rep_min, repMax: i.rep_max, restSec: i.rest_sec, incrementKg: i.increment_kg, superset: i.superset,
       sets: sets.filter((s) => s.position === i.position).map((s) => ({
         id: s.id, setIndex: s.set_index, kg: s.kg, reps: s.reps, doneAt: s.done_at, isRecord: !!s.is_record,
       })),
@@ -163,7 +172,7 @@ export function finishWorkout(workout: Workout) {
         db.runSync('UPDATE sets SET is_record = ? WHERE id = ?', flags[i] ? 1 : 0, s.id);
         enqueue(s.id, {
           id: s.id, logged_at: new Date(s.doneAt!).toISOString(), type: 'set', day: workout.dayName, exercise: item.exercise,
-          set: String(i + 1), weight_kg: String(s.kg), reps: String(s.reps), record: flags[i] ? 'yes' : 'no',
+          set: String(i + 1), weight_kg: String(s.kg), reps: String(s.reps), record: flags[i] ? 'yes' : 'no', value_cm: '',
         });
       });
     }
@@ -209,12 +218,25 @@ export function logBodyweight(kg: number) {
   const now = Date.now();
   db.withTransactionSync(() => {
     db.runSync('INSERT INTO bodyweight (id, logged_at, kg) VALUES (?, ?, ?)', id, now, kg);
-    enqueue(id, { id, logged_at: new Date(now).toISOString(), type: 'bodyweight', day: '', exercise: '', set: '', weight_kg: String(kg), reps: '', record: '' });
+    enqueue(id, { id, logged_at: new Date(now).toISOString(), type: 'bodyweight', day: '', exercise: '', set: '', weight_kg: String(kg), reps: '', record: '', value_cm: '' });
   });
 }
 
 export function bodyweightSeries(limit = 8): number[] {
   return db.getAllSync<{ kg: number }>('SELECT kg FROM bodyweight ORDER BY logged_at DESC LIMIT ?', limit).map((r) => r.kg).reverse();
+}
+
+export function logMeasurement(part: string, cm: number) {
+  const id = newId();
+  const now = Date.now();
+  db.withTransactionSync(() => {
+    db.runSync('INSERT INTO measurements (id, part, logged_at, cm) VALUES (?, ?, ?, ?)', id, part, now, cm);
+    enqueue(id, { id, logged_at: new Date(now).toISOString(), type: 'measurement', day: '', exercise: part, set: '', weight_kg: '', reps: '', record: '', value_cm: String(cm) });
+  });
+}
+
+export function measurementSeries(part: string, limit = 8): number[] {
+  return db.getAllSync<{ cm: number }>('SELECT cm FROM measurements WHERE part = ? ORDER BY logged_at DESC LIMIT ?', part, limit).map((r) => r.cm).reverse();
 }
 
 export function getNote(exercise: string): string {

@@ -1,18 +1,18 @@
-name,muscle,video_url,cues
-Bench Press,Chest,,"Elbows at 45 degrees, bar to mid chest."
-Incline Press,Chest,,"Bench at 30 degrees, control the way down."
-Shoulder Press,Shoulders,,"Ribs down, press straight overhead."
-Cable Fly,Chest,,"Slight elbow bend, squeeze at the middle."
-Lateral Raise,Shoulders,,"Lead with the elbows, stop at shoulder height."
-Triceps Pushdown,Arms,,Pin elbows to your sides.
-Lat Pulldown,Back,,Pull elbows down to your ribs.
-Barbell Row,Back,,"Flat back, pull to your lower chest."
-Seated Row,Back,,"Sit tall, squeeze your shoulder blades."
-Face Pull,Shoulders,,"Pull to your forehead, elbows high."
-Hammer Curl,Arms,,"Palms facing in, no swinging."
-Barbell Curl,Arms,,Keep elbows still at your sides.
-Squat,Legs,,"Brace first, knees track over toes."
-Romanian Deadlift,Legs,,"Hips back, soft knees, flat back."
-Leg Press,Legs,,Lower back stays on the pad.
-Leg Curl,Legs,,Slow on the way back up.
-Calf Raise,Legs,,"Full stretch at the bottom, pause at the top."
+name,muscle,video_url,cues,equipment
+Bench Press,Chest,,"Elbows at 45 degrees, bar to mid chest.",barbell
+Incline Press,Chest,,"Bench at 30 degrees, control the way down.",dumbbell
+Shoulder Press,Shoulders,,"Ribs down, press straight overhead.",barbell
+Cable Fly,Chest,,"Slight elbow bend, squeeze at the middle.",cable
+Lateral Raise,Shoulders,,"Lead with the elbows, stop at shoulder height.",dumbbell
+Triceps Pushdown,Arms,,Pin elbows to your sides.,cable
+Lat Pulldown,Back,,Pull elbows down to your ribs.,cable
+Barbell Row,Back,,"Flat back, pull to your lower chest.",barbell
+Seated Row,Back,,"Sit tall, squeeze your shoulder blades.",cable
+Face Pull,Shoulders,,"Pull to your forehead, elbows high.",cable
+Hammer Curl,Arms,,"Palms facing in, no swinging.",dumbbell
+Barbell Curl,Arms,,Keep elbows still at your sides.,barbell
+Squat,Legs,,"Brace first, knees track over toes.",barbell
+Romanian Deadlift,Legs,,"Hips back, soft knees, flat back.",barbell
+Leg Press,Legs,,Lower back stays on the pad.,machine
+Leg Curl,Legs,,Slow on the way back up.,machine
+Calf Raise,Legs,,"Full stretch at the bottom, pause at the top.",machine

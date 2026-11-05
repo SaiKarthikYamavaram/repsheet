@@ -5,7 +5,7 @@ import Svg, { Circle, Defs, Line, LinearGradient, Polygon, Polyline, Stop, Text 
 import { fmtKg } from '@/lib/logic';
 import { colors, fonts } from '@/theme';
 
-export function LineChart({ points, height = 190 }: { points: number[]; height?: number }) {
+export function LineChart({ points, unit, height = 190 }: { points: number[]; unit: string; height?: number }) {
   const [width, setWidth] = useState(0);
   const left = 34, top = 10, bottom = 10, right = 8;
   let lo = Math.floor(Math.min(...points));
@@ -16,7 +16,7 @@ export function LineChart({ points, height = 190 }: { points: number[]; height?:
   const line = points.map((v, i) => `${x(i)},${y(v)}`).join(' ');
   const end = points[points.length - 1];
   return (
-    <View accessibilityLabel={`Chart from ${fmtKg(points[0])} to ${fmtKg(end)} kg`} style={{ height }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+    <View accessibilityLabel={`Chart from ${fmtKg(points[0])} to ${fmtKg(end)} ${unit}`} style={{ height }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {width > 0 && (
         <Svg width={width} height={height}>
           <Defs>

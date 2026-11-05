@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { STARTER } from './starter';
 import {
-  addWeightHint, buildRoutine, encodeForm, formEntries, formResponseUrl, isRecord, liftsLine, markRecords,
-  nextDayIndex, parseCsv, prefillSets, weekStart, weekStreak, youtubeId,
+  addWeightHint, buildRoutine, dayKey, encodeForm, formEntries, formResponseUrl, isRecord, liftsLine, markRecords, monthGrid,
+  nextAfterSet, nextDayIndex, parseCsv, platesFor, prefillSets, warmupSets, weekStart, weekStreak, youtubeId,
 } from './logic';
 
 const ROUTINE = 'day_order,day_name,exercise,sets,rep_min,rep_max,rest_sec,increment_kg\n';
@@ -37,6 +37,81 @@ test('a missing settings tab falls back to the default target', () => {
   // Google answers a request for a missing tab with the first tab.
   const r = buildRoutine({ exercises: STARTER.exercises, routine: STARTER.routine, settings: STARTER.exercises });
   expect(r.weeklyTarget).toBe(4);
+});
+
+test('settings read bar weight and plate rows, with optional columns', () => {
+  const settings = 'key,value\nbar_kg,15\nplate_kg,10\nplate_kg,5\n';
+  const r = buildRoutine({ exercises: 'name,muscle,video_url,cues\nA,X,,\n', routine: `${ROUTINE}1,One,A,3,8,12,60,2.5\n`, settings });
+  expect(r.barKg).toBe(15);
+  expect(r.plates).toEqual([10, 5]);
+  expect(r.exercises[0].equipment).toBe('');
+  expect(r.days[0].items[0].superset).toBe('');
+  const starter = buildRoutine(STARTER);
+  expect(starter.barKg).toBe(20);
+  expect(starter.plates).toContain(1.25);
+  expect(starter.exercises[0].equipment).toBe('barbell');
+});
+
+const item = (superset: string, done: boolean[]) => ({ superset, sets: done.map((d) => ({ doneAt: d ? 1 : null })) });
+
+test('straight sets rest and stay until the exercise is complete', () => {
+  expect(nextAfterSet([item('', [true, false]), item('', [false])], 0)).toEqual({ rest: true, position: 0 });
+  expect(nextAfterSet([item('', [true, true]), item('', [false])], 0)).toEqual({ rest: true, position: 1 });
+});
+
+test('straight sets skip finished exercises and wrap back to skipped ones', () => {
+  expect(nextAfterSet([item('', [true]), item('', [true]), item('', [false])], 0)).toEqual({ rest: true, position: 2 });
+  expect(nextAfterSet([item('', [false]), item('', [true])], 1)).toEqual({ rest: true, position: 0 });
+});
+
+test('supersets go to the partner without rest, then rest after the round', () => {
+  const round1 = [item('A', [true, false]), item('A', [false, false]), item('', [false])];
+  expect(nextAfterSet(round1, 0)).toEqual({ rest: false, position: 1 });
+  const endOfRound = [item('A', [true, false]), item('A', [true, false]), item('', [false])];
+  expect(nextAfterSet(endOfRound, 1)).toEqual({ rest: true, position: 0 });
+});
+
+test('supersets with uneven sets and different groups behave', () => {
+  expect(nextAfterSet([item('A', [true, false]), item('A', [true])], 0)).toEqual({ rest: true, position: 0 });
+  expect(nextAfterSet([item('A', [true]), item('A', [true]), item('B', [false]), item('B', [false])], 1)).toEqual({ rest: true, position: 2 });
+  expect(nextAfterSet([item('A', [true]), item('', [false]), item('A', [false])], 0)).toEqual({ rest: true, position: 1 });
+});
+
+test('a finished workout has nowhere to go and no rest', () => {
+  expect(nextAfterSet([item('', [true]), item('', [true])], 1)).toEqual({ rest: false, position: 1 });
+});
+
+test('plates load each side, including small plates without float errors', () => {
+  const plates = [25, 20, 15, 10, 5, 2.5, 1.25];
+  expect(platesFor(100, 20, plates)).toEqual({ perSide: [25, 15], shortKg: 0, belowBar: false });
+  expect(platesFor(62.5, 20, plates).perSide).toEqual([20, 1.25]);
+  expect(platesFor(22.5, 20, plates).perSide).toEqual([1.25]);
+  expect(platesFor(20, 20, plates)).toEqual({ perSide: [], shortKg: 0, belowBar: false });
+  expect(platesFor(15, 20, plates).belowBar).toBe(true);
+});
+
+test('plates report what they cannot load', () => {
+  expect(platesFor(61, 20, [20, 5])).toEqual({ perSide: [20], shortKg: 1, belowBar: false });
+});
+
+test('warm-ups ramp up below the working weight', () => {
+  expect(warmupSets(100, 20, 2.5, true)).toEqual([{ kg: 20, reps: 10 }, { kg: 40, reps: 8 }, { kg: 60, reps: 5 }, { kg: 80, reps: 3 }]);
+  expect(warmupSets(30, 0, 2, false)).toEqual([{ kg: 12, reps: 8 }, { kg: 18, reps: 5 }, { kg: 24, reps: 3 }]);
+});
+
+test('light work sets drop warm-ups that would be at or under the bar', () => {
+  expect(warmupSets(30, 20, 2.5, true)).toEqual([{ kg: 20, reps: 10 }, { kg: 25, reps: 3 }]);
+  expect(warmupSets(20, 20, 2.5, true)).toEqual([]);
+  expect(warmupSets(0, 20, 2.5, false)).toEqual([]);
+});
+
+test('month grid starts on Monday and pads full weeks', () => {
+  const nov = monthGrid(2026, 10);
+  expect(nov[0]).toEqual([null, null, null, null, null, null, 1]);
+  expect(nov[1][3]).toBe(5);
+  expect(nov[nov.length - 1]).toEqual([30, null, null, null, null, null, null]);
+  expect(monthGrid(2021, 1).length).toBe(4);
+  expect(dayKey(new Date(2026, 10, 5, 23).getTime())).toBe(dayKey(new Date(2026, 10, 5, 1).getTime()));
 });
 
 test('cycle moves on from the last finished day and wraps', () => {

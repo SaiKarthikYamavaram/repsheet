@@ -1,13 +1,14 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, Alert, Animated, Easing, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from 'react-native';
+import { AccessibilityInfo, Alert, Animated, Easing, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FormVideo } from '@/components/form-video';
+import { PlateBar } from '@/components/plate-bar';
 import { Card, Ghost, H1, H2, HeatButton, Hint, HotText, Icon, NumberField, RoundButton, Ring, Screen, Sheet, Sub } from '@/components/ui';
 import { addSet, bestFinished, discardWorkout, finishWorkout, getKv, getNote, lastLifts, loadActiveWorkout, markSetDone, setKv, setPosition, swapItem, updateSet, Workout, WorkoutItem } from '@/lib/db';
-import { addWeightHint, bestOf, clock, fmtKg, isRecord, liftsLine, RoutineItem } from '@/lib/logic';
+import { addWeightHint, bestOf, clock, fmtKg, isRecord, liftsLine, nextAfterSet, platesFor, RoutineItem, warmupSets } from '@/lib/logic';
 import { cancelRestAlert, scheduleRestAlert } from '@/lib/rest-alert';
 import { flushOutbox, useSync } from '@/lib/sync';
 import { colors, fonts } from '@/theme';
@@ -25,11 +26,14 @@ function readRest(): Rest | null {
   }
 }
 
-function nextLabel(item: WorkoutItem, following?: WorkoutItem): string {
-  const next = item.sets.findIndex((s) => !s.doneAt);
-  if (next >= 0) return `Next: Set ${next + 1}, ${fmtKg(item.sets[next].kg)} kg × ${item.sets[next].reps}`;
-  return following ? `Next: ${following.exercise}` : 'Workout almost done';
+function nextLabel(target: WorkoutItem, current: WorkoutItem): string {
+  const next = target.sets.findIndex((s) => !s.doneAt);
+  if (next < 0) return 'Workout almost done';
+  const set = `Set ${next + 1}, ${fmtKg(target.sets[next].kg)} kg × ${target.sets[next].reps}`;
+  return target.position === current.position ? `Next: ${set}` : `Next: ${target.exercise}, ${set}`;
 }
+
+const platesLine = (plates: number[]) => plates.map(fmtKg).join(' + ');
 
 export default function WorkoutScreen() {
   useKeepAwake();
@@ -40,6 +44,8 @@ export default function WorkoutScreen() {
   const [rest, setRest] = useState<Rest | null>(readRest);
   const [celebrate, setCelebrate] = useState<string | null>(null);
   const [swapOpen, setSwapOpen] = useState(false);
+  const [warmupOpen, setWarmupOpen] = useState(false);
+  const [platesOpen, setPlatesOpen] = useState(false);
   const touch = useRef<{ x: number; y: number } | null>(null);
 
   useFocusEffect(useCallback(() => {
@@ -68,6 +74,12 @@ export default function WorkoutScreen() {
   const isLast = w.position === w.items.length - 1;
   const info = sync.routine.exercises.find((e) => e.name === item.exercise);
   const hintKg = addWeightHint(last, item.repMax, item.incrementKg);
+  const { barKg, plates } = sync.routine;
+  const barbell = info?.equipment === 'barbell';
+  const workKg = set?.kg ?? item.sets[0].kg;
+  const load = platesFor(workKg, barKg, plates);
+  const warmups = warmupSets(workKg, barKg, item.incrementKg || 2.5, barbell);
+  const partners = item.superset ? w.items.filter((i) => i.superset === item.superset && i.position !== item.position).map((i) => i.exercise) : [];
 
   const changeWeight = (kg: number) => {
     if (!set) return;
@@ -84,12 +96,12 @@ export default function WorkoutScreen() {
 
   const startRest = (fresh: Workout) => {
     const current = fresh.items[fresh.position];
-    const anyLeft = fresh.items.some((i) => i.sets.some((s) => !s.doneAt));
-    if (!anyLeft || current.restSec <= 0) {
+    const plan = nextAfterSet(fresh.items, fresh.position);
+    if (!plan.rest || current.restSec <= 0) {
       afterRest(fresh);
       return;
     }
-    const label = nextLabel(current, fresh.items[fresh.position + 1]);
+    const label = nextLabel(fresh.items[plan.position], current);
     const next: Rest = { endsAt: Date.now() + current.restSec * 1000, total: current.restSec, label };
     setRest(next);
     setKv('rest', JSON.stringify(next));
@@ -98,10 +110,8 @@ export default function WorkoutScreen() {
 
   const afterRest = (fresh: Workout | null = loadActiveWorkout()) => {
     if (!fresh) return;
-    const current = fresh.items[fresh.position];
-    if (current.sets.every((s) => s.doneAt) && fresh.position < fresh.items.length - 1) {
-      setPosition(fresh.id, fresh.position + 1);
-    }
+    const { position } = nextAfterSet(fresh.items, fresh.position);
+    if (position !== fresh.position) setPosition(fresh.id, position);
     setSel(null);
     reload();
   };
@@ -115,6 +125,7 @@ export default function WorkoutScreen() {
 
   const doneSet = () => {
     if (!set) return;
+    Keyboard.dismiss();
     if (set.doneAt) {
       setSel(null);
       return;
@@ -159,7 +170,7 @@ export default function WorkoutScreen() {
   };
 
   const swapTo = (next: RoutineItem) => {
-    swapItem(w.id, w.position, next);
+    swapItem(w.id, w.position, { ...next, superset: item.superset });
     setSwapOpen(false);
     setSel(null);
     reload();
@@ -192,6 +203,7 @@ export default function WorkoutScreen() {
               <View style={{ flex: 1 }}>
                 <H1>{item.exercise}</H1>
                 <Sub>{item.sets.length} sets · {item.repMin}–{item.repMax} reps · {item.restSec}s rest</Sub>
+                {partners.length > 0 && <Text style={styles.superset}>SUPERSET WITH {partners.join(' + ').toUpperCase()}</Text>}
               </View>
               <View style={styles.pager}>
                 <RoundButton icon="back" label="Previous exercise" size={36} disabled={w.position === 0} onPress={() => move(w.position - 1)} />
@@ -223,7 +235,15 @@ export default function WorkoutScreen() {
               ))}
             </View>
 
+            {barbell && (
+              <Pressable accessibilityRole="button" accessibilityLabel="Show plates to load" onPress={() => setPlatesOpen(true)} style={styles.plates}>
+                <Sub>Each side</Sub>
+                <Text style={styles.lastText}>{load.belowBar ? `Under the ${fmtKg(barKg)} kg bar` : load.perSide.length ? platesLine(load.perSide) : 'Empty bar'}</Text>
+              </Pressable>
+            )}
+
             <View style={styles.tools}>
+              <Ghost label="Warm-up" onPress={() => setWarmupOpen(true)} />
               <Ghost label="Add set" onPress={() => { addSet(w.id, item); setSel(item.sets.length); reload(); }} />
               <Ghost label="Swap" disabled={item.sets.some((s) => s.doneAt)} onPress={() => setSwapOpen(true)} />
               <Ghost label="Skip" disabled={isLast} onPress={() => move(w.position + 1)} />
@@ -266,6 +286,33 @@ export default function WorkoutScreen() {
         ))}
       </Sheet>
 
+      <Sheet visible={platesOpen} onClose={() => setPlatesOpen(false)}>
+        <H2>{fmtKg(workKg)} kg on the bar</H2>
+        {load.belowBar ? (
+          <Sub>That’s lighter than your {fmtKg(barKg)} kg bar. Change bar_kg in your sheet if you use a lighter one.</Sub>
+        ) : (
+          <>
+            <PlateBar plates={load.perSide} />
+            <Text style={styles.lastText}>{load.perSide.length ? `Each side: ${platesLine(load.perSide)}` : `Just the ${fmtKg(barKg)} kg bar`}</Text>
+            {load.shortKg > 0 && <Sub>Your plates can’t make this exactly. This loads {fmtKg(workKg - load.shortKg)} kg.</Sub>}
+          </>
+        )}
+      </Sheet>
+
+      <Sheet visible={warmupOpen} onClose={() => setWarmupOpen(false)}>
+        <H2>Warm-up for {fmtKg(workKg)} kg</H2>
+        {warmups.length === 0 && <Sub>{workKg > 0 ? 'This weight is light enough to start straight away.' : 'Set your working weight first, then come back here.'}</Sub>}
+        {warmups.map((l) => {
+          const side = platesFor(l.kg, barKg, plates).perSide;
+          return (
+            <View key={l.kg} style={styles.pick}>
+              <Text style={styles.pickName}>{fmtKg(l.kg)} kg × {l.reps}</Text>
+              {barbell && <Sub>{side.length ? `Each side: ${platesLine(side)}` : 'Empty bar'}</Sub>}
+            </View>
+          );
+        })}
+      </Sheet>
+
       {rest && <RestOverlay rest={rest} onExtend={() => {
         const left = Math.max(0, Math.ceil((rest.endsAt - Date.now()) / 1000)) + 30;
         const next = { ...rest, endsAt: Date.now() + left * 1000, total: Math.max(rest.total, left) };
@@ -291,7 +338,7 @@ function swapOptions(routine: ReturnType<typeof useSync>['routine'], w: Workout,
     .sort((a, b) => Number(b.muscle === muscle) - Number(a.muscle === muscle))
     .map((e) => {
       const plan = plans.find((p) => p.exercise === e.name);
-      return { ...(plan ?? { exercise: e.name, sets: item.sets.length, repMin: item.repMin, repMax: item.repMax, restSec: item.restSec, incrementKg: item.incrementKg }), muscle: e.muscle };
+      return { ...(plan ?? { exercise: e.name, sets: item.sets.length, repMin: item.repMin, repMax: item.repMax, restSec: item.restSec, incrementKg: item.incrementKg, superset: item.superset }), muscle: e.muscle };
     });
 }
 
@@ -397,6 +444,8 @@ const styles = StyleSheet.create({
   chk: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.line },
   chkOn: { backgroundColor: colors.coral, borderColor: colors.coral },
   tools: { flexDirection: 'row', gap: 6 },
+  superset: { fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.8, color: colors.link, marginTop: 4 },
+  plates: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: 12, borderRadius: 15, backgroundColor: colors.glass },
   foot: { paddingHorizontal: 16, paddingTop: 11, gap: 10, backgroundColor: 'rgba(28,27,36,0.96)', borderTopLeftRadius: 22, borderTopRightRadius: 22 },
   steppers: { flexDirection: 'row', gap: 10 },
   stepper: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

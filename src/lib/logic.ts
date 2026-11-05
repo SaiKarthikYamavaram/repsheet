@@ -1,6 +1,6 @@
 // Pure rules with no React Native imports, so `bun test` can run them directly.
 
-export type Exercise = { name: string; muscle: string; videoUrl: string; cues: string };
+export type Exercise = { name: string; muscle: string; videoUrl: string; cues: string; equipment: string };
 export type RoutineItem = {
   exercise: string;
   sets: number;
@@ -8,9 +8,13 @@ export type RoutineItem = {
   repMax: number;
   restSec: number;
   incrementKg: number;
+  superset: string;
 };
 export type Day = { order: number; name: string; items: RoutineItem[] };
-export type Routine = { exercises: Exercise[]; days: Day[]; weeklyTarget: number };
+export type Routine = { exercises: Exercise[]; days: Day[]; weeklyTarget: number; barKg: number; plates: number[] };
+
+export const DEFAULT_BAR_KG = 20;
+export const DEFAULT_PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
 export type Lift = { kg: number; reps: number };
 
 export function parseCsv(text: string): string[][] {
@@ -62,7 +66,7 @@ function number(row: Row, tab: string, column: string): number {
 export function buildRoutine(csv: { exercises: string; routine: string; settings?: string }): Routine {
   const exercises = table(csv.exercises, 'exercises', ['name', 'muscle', 'video_url', 'cues']).map((r) => {
     if (!r.get('name')) throw new Error(`exercises row ${r.line}: "name" is empty.`);
-    return { name: r.get('name'), muscle: r.get('muscle') || 'Other', videoUrl: r.get('video_url'), cues: r.get('cues') };
+    return { name: r.get('name'), muscle: r.get('muscle') || 'Other', videoUrl: r.get('video_url'), cues: r.get('cues'), equipment: r.get('equipment').toLowerCase() };
   });
   const known = new Set(exercises.map((e) => e.name));
   const days = new Map<number, Day>();
@@ -78,6 +82,7 @@ export function buildRoutine(csv: { exercises: string; routine: string; settings
       repMax: number(r, 'routine', 'rep_max'),
       restSec: number(r, 'routine', 'rest_sec'),
       incrementKg: number(r, 'routine', 'increment_kg'),
+      superset: r.get('superset'),
     };
     if (item.sets < 1) throw new Error(`routine row ${r.line}: "sets" must be at least 1.`);
     if (!days.has(order)) days.set(order, { order, name: r.get('day_name') || `Day ${order}`, items: [] });
@@ -85,17 +90,87 @@ export function buildRoutine(csv: { exercises: string; routine: string; settings
   }
   if (!days.size) throw new Error('The routine tab has no workouts.');
   let weeklyTarget = 4;
+  let barKg = DEFAULT_BAR_KG;
+  let plates = DEFAULT_PLATES;
   if (csv.settings) {
     // Google returns the first tab when a tab doesn't exist, so a missing settings tab just means the defaults.
     const header = (parseCsv(csv.settings)[0] ?? []).map((h) => h.trim().toLowerCase());
-    const hasSettings = header.includes('key') && header.includes('value');
-    const row = hasSettings ? table(csv.settings, 'settings', ['key', 'value']).find((r) => r.get('key') === 'weekly_target') : undefined;
-    if (row) {
-      weeklyTarget = number(row, 'settings', 'value');
-      if (weeklyTarget < 1) throw new Error(`settings row ${row.line}: "weekly_target" must be at least 1.`);
+    const rows = header.includes('key') && header.includes('value') ? table(csv.settings, 'settings', ['key', 'value']) : [];
+    const target = rows.find((r) => r.get('key') === 'weekly_target');
+    if (target) {
+      weeklyTarget = number(target, 'settings', 'value');
+      if (weeklyTarget < 1) throw new Error(`settings row ${target.line}: "weekly_target" must be at least 1.`);
+    }
+    const bar = rows.find((r) => r.get('key') === 'bar_kg');
+    if (bar) barKg = number(bar, 'settings', 'value');
+    // One row per plate size, because Google blanks text in a column of mostly numbers.
+    const listed = rows.filter((r) => r.get('key') === 'plate_kg').map((r) => number(r, 'settings', 'value')).filter((n) => n > 0);
+    if (listed.length) plates = listed;
+  }
+  return { exercises, days: [...days.values()].sort((a, b) => a.order - b.order), weeklyTarget, barKg, plates };
+}
+
+type LoggableItem = { superset?: string; sets: { doneAt: number | null }[] };
+
+// Where to go after ticking a set. Supersets move to the next exercise in the group without rest,
+// and rest once each round is complete.
+export function nextAfterSet(items: LoggableItem[], position: number): { rest: boolean; position: number } {
+  const open = (i: number) => items[i].sets.some((s) => !s.doneAt);
+  const label = items[position].superset;
+  let start = position;
+  let end = position;
+  if (label) {
+    while (start > 0 && items[start - 1].superset === label) start--;
+    while (end < items.length - 1 && items[end + 1].superset === label) end++;
+  }
+  for (let i = position + 1; i <= end; i++) if (open(i)) return { rest: false, position: i };
+  for (let i = start; i <= end; i++) if (open(i)) return { rest: true, position: i };
+  for (let i = end + 1; i < items.length; i++) if (open(i)) return { rest: true, position: i };
+  for (let i = 0; i < start; i++) if (open(i)) return { rest: true, position: i };
+  return { rest: false, position };
+}
+
+// Greedy works because gym plate sizes each fit evenly into the larger ones, near enough to load a real bar.
+export function platesFor(totalKg: number, barKg: number, plates: number[]): { perSide: number[]; shortKg: number; belowBar: boolean } {
+  if (totalKg < barKg) return { perSide: [], shortKg: 0, belowBar: true };
+  // Whole grams, so 1.25 kg plates don't pick up floating point errors.
+  let left = Math.round(((totalKg - barKg) / 2) * 1000);
+  const perSide: number[] = [];
+  for (const plate of [...plates].sort((a, b) => b - a)) {
+    const grams = Math.round(plate * 1000);
+    while (left >= grams) {
+      perSide.push(plate);
+      left -= grams;
     }
   }
-  return { exercises, days: [...days.values()].sort((a, b) => a.order - b.order), weeklyTarget };
+  return { perSide, shortKg: (left * 2) / 1000, belowBar: false };
+}
+
+export function warmupSets(workKg: number, barKg: number, stepKg: number, barbell: boolean): Lift[] {
+  const steps = [{ pct: 0.4, reps: 8 }, { pct: 0.6, reps: 5 }, { pct: 0.8, reps: 3 }];
+  const out: Lift[] = barbell && workKg > barKg ? [{ kg: barKg, reps: 10 }] : [];
+  const floor = barbell ? barKg : 0;
+  for (const { pct, reps } of steps) {
+    const kg = +(Math.round((workKg * pct) / stepKg) * stepKg).toFixed(2);
+    if (kg > floor && kg < workKg && !out.some((l) => l.kg === kg)) out.push({ kg, reps });
+  }
+  return out;
+}
+
+export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// Weeks of day numbers, Monday first, with null for days outside the month.
+export function monthGrid(year: number, month: number): (number | null)[][] {
+  const lead = (new Date(year, month, 1).getDay() + 6) % 7;
+  const days = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [...Array(lead).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
+  while (cells.length % 7) cells.push(null);
+  return Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
+}
+
+export function dayKey(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
 export function nextDayIndex(days: Day[], lastOrder: number | null): number {

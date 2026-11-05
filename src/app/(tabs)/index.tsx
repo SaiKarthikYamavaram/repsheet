@@ -3,7 +3,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Card, Eyebrow, Ghost, H2, HeatButton, Hint, HotText, Icon, Num, NumberField, RoundButton, Ring, Screen, Sheet, Sub, SyncPill } from '@/components/ui';
+import { LogValueSheet } from '@/components/log-value-sheet';
+import { Card, Eyebrow, Hint, HotText, Icon, Num, Ring, Screen, Sub, SyncPill } from '@/components/ui';
 import { bodyweightSeries, lastLifts, loadActiveWorkout, loadStats, logBodyweight, startWorkout, volumeSince, Workout } from '@/lib/db';
 import { addWeightHint, Day, fmtKg, fmtVolume, nextDayIndex, shortDate, weekStart, weekStreak } from '@/lib/logic';
 import { requestRestAlerts } from '@/lib/rest-alert';
@@ -39,7 +40,6 @@ export default function Today() {
   const [data, setData] = useState(load);
   const [picked, setPicked] = useState<number | null>(null);
   const [bwOpen, setBwOpen] = useState(false);
-  const [bwDraft, setBwDraft] = useState(70);
 
   useFocusEffect(useCallback(() => {
     setData(load());
@@ -59,8 +59,8 @@ export default function Today() {
     if (!data.active) startWorkout(day);
     router.push('/workout');
   };
-  const saveBw = () => {
-    logBodyweight(bwDraft);
+  const saveBw = (kg: number) => {
+    logBodyweight(kg);
     flushOutbox();
     setBwOpen(false);
     setData(load());
@@ -124,7 +124,7 @@ export default function Today() {
 
         {hint && <Hint title={`${hint.name}: try ${fmtKg(hint.kg)} kg`} detail={`You hit ${hint.reps} reps on every set`} />}
 
-        <Pressable accessibilityRole="button" accessibilityLabel="Log bodyweight" onPress={() => { setBwDraft(data.bw ?? 70); setBwOpen(true); }} style={styles.bw}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Log bodyweight" onPress={() => setBwOpen(true)} style={styles.bw}>
           <View>
             <Sub>Bodyweight</Sub>
             <Num style={{ fontSize: 18 }}>{data.bw === null ? 'Not logged' : `${fmtKg(data.bw)} kg`}</Num>
@@ -133,19 +133,7 @@ export default function Today() {
         </Pressable>
       </ScrollView>
 
-      <Sheet visible={bwOpen} onClose={() => setBwOpen(false)}>
-        <H2>Log bodyweight</H2>
-        <View style={styles.bwStepper}>
-          <RoundButton icon="minus" label="Less" size={56} onPress={() => setBwDraft((v) => +(v - 0.1).toFixed(1))} />
-          <View style={{ alignItems: 'center' }}>
-            <NumberField decimal label="Bodyweight in kilograms" value={bwDraft} format={fmtKg} onCommit={setBwDraft} style={{ fontSize: 38 }} />
-            <Sub>kg</Sub>
-          </View>
-          <RoundButton hot icon="plus" label="More" size={56} onPress={() => setBwDraft((v) => +(v + 0.1).toFixed(1))} />
-        </View>
-        <HeatButton label="SAVE" onPress={saveBw} />
-        <Ghost label="Cancel" onPress={() => setBwOpen(false)} />
-      </Sheet>
+      <LogValueSheet visible={bwOpen} title="Log bodyweight" unit="kg" start={data.bw ?? 70} step={0.1} onClose={() => setBwOpen(false)} onSave={saveBw} />
     </Screen>
   );
 }
@@ -174,5 +162,4 @@ const styles = StyleSheet.create({
   goText: { fontFamily: fonts.display, fontSize: 15, color: '#fff' },
   bw: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.glass, borderRadius: 18, padding: 14 },
   bwAdd: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.glass2 },
-  bwStepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
 });

@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 import { FORM_URL, SHEET_ID } from '@/config';
 
 import { getKv, outboxCount, outboxRemove, outboxRows, setKv } from './db';
-import { buildRoutine, encodeForm, formEntries, formResponseUrl, Routine } from './logic';
+import { buildRoutine, DEFAULT_BAR_KG, DEFAULT_PLATES, encodeForm, formEntries, formResponseUrl, Routine } from './logic';
 import { STARTER } from './starter';
 
 type Cached = { routine: Routine; fetchedAt: number };
@@ -19,7 +19,10 @@ export type SyncState = {
 function loadCached(): Cached | null {
   try {
     const raw = getKv('routine');
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed: Cached = JSON.parse(raw);
+    // A routine cached by an older version has no plate settings yet.
+    return { ...parsed, routine: { ...parsed.routine, barKg: parsed.routine.barKg ?? DEFAULT_BAR_KG, plates: parsed.routine.plates ?? DEFAULT_PLATES } };
   } catch {
     return null;
   }
