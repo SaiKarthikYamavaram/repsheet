@@ -22,7 +22,7 @@ function loadCached(): Cached | null {
     if (!raw) return null;
     const parsed: Cached = JSON.parse(raw);
     // A routine cached by an older version has no plate settings yet.
-    return { ...parsed, routine: { ...parsed.routine, barKg: parsed.routine.barKg ?? DEFAULT_BAR_KG, plates: parsed.routine.plates ?? DEFAULT_PLATES } };
+    return { ...parsed, routine: { ...parsed.routine, barKg: parsed.routine.barKg ?? DEFAULT_BAR_KG, plates: parsed.routine.plates ?? DEFAULT_PLATES, minVersion: parsed.routine.minVersion ?? '', updateUrl: parsed.routine.updateUrl ?? '' } };
   } catch {
     return null;
   }
@@ -74,8 +74,8 @@ export async function refreshRoutine() {
   if (!SHEET_ID || state.syncing) return;
   update({ syncing: true });
   try {
-    const [exercises, routine, settings] = await Promise.all([fetchTab('exercises'), fetchTab('routine'), fetchTab('settings').catch(() => undefined)]);
-    const built = buildRoutine({ exercises, routine, settings });
+    const [exercises, routine, settings, app] = await Promise.all([fetchTab('exercises'), fetchTab('routine'), fetchTab('settings').catch(() => undefined), fetchTab('app').catch(() => undefined)]);
+    const built = buildRoutine({ exercises, routine, settings, app });
     const fetchedAt = Date.now();
     setKv('routine', JSON.stringify({ routine: built, fetchedAt }));
     update({ routine: built, fetchedAt, syncing: false, sheetError: null });

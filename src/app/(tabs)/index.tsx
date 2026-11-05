@@ -1,10 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { LogValueSheet } from '@/components/log-value-sheet';
 import { Card, Eyebrow, Hint, HotText, Icon, Num, Ring, Screen, Sub, SyncPill } from '@/components/ui';
+import { newAppInfo } from '@/lib/app-version';
 import { bodyweightSeries, lastLifts, loadActiveWorkout, loadStats, logBodyweight, startWorkout, volumeSince, Workout } from '@/lib/db';
 import { addWeightHint, Day, fmtKg, fmtVolume, nextDayIndex, shortDate, weekStart, weekStreak } from '@/lib/logic';
 import { requestRestAlerts } from '@/lib/rest-alert';
@@ -54,6 +55,8 @@ export default function Today() {
   const hint = data.active ? null : findHint(day);
   const doneSoFar = data.active ? data.active.items.flatMap((i) => i.sets).filter((s) => s.doneAt).length : 0;
 
+  const newApp = newAppInfo(sync.routine);
+
   const go = () => {
     requestRestAlerts();
     if (!data.active) startWorkout(day);
@@ -76,6 +79,12 @@ export default function Today() {
           <Text style={styles.date}>{shortDate(now)}</Text>
           <SyncPill />
         </View>
+
+        {newApp.needed && (
+          <Pressable accessibilityRole={newApp.url ? 'link' : undefined} disabled={!newApp.url} onPress={() => Linking.openURL(newApp.url)}>
+            <Hint title="New version available" detail={newApp.url ? 'Tap to download and install it.' : 'Ask for the latest install link.'} />
+          </Pressable>
+        )}
 
         <Card style={styles.weekCard}>
           <Ring size={68} stroke={8} fraction={weekDone / weeklyTarget} />

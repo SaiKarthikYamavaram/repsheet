@@ -50,4 +50,8 @@ plate_kg,5
 plate_kg,2.5
 plate_kg,1.25
 `,
+  app: `key,value
+min_version,
+update_url,
+`,
 };

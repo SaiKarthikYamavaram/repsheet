@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { STARTER } from './starter';
 import {
-  addWeightHint, buildRoutine, dayKey, encodeForm, formEntries, formResponseUrl, isRecord, liftsLine, markRecords, monthGrid,
+  addWeightHint, buildRoutine, dayKey, encodeForm, formEntries, formResponseUrl, isOlderVersion, isRecord, liftsLine, markRecords, monthGrid,
   nextAfterSet, nextDayIndex, parseCsv, platesFor, prefillSets, warmupSets, weekStart, weekStreak, youtubeId,
 } from './logic';
 
@@ -112,6 +112,26 @@ test('month grid starts on Monday and pads full weeks', () => {
   expect(nov[nov.length - 1]).toEqual([30, null, null, null, null, null, null]);
   expect(monthGrid(2021, 1).length).toBe(4);
   expect(dayKey(new Date(2026, 10, 5, 23).getTime())).toBe(dayKey(new Date(2026, 10, 5, 1).getTime()));
+});
+
+test('version check compares numbers and ignores anything unreadable', () => {
+  expect(isOlderVersion('1.0.0', '1.1.0')).toBe(true);
+  expect(isOlderVersion('1.9.0', '1.10.0')).toBe(true);
+  expect(isOlderVersion('1.1', '1.1.1')).toBe(true);
+  expect(isOlderVersion('1.1.0', '1.1.0')).toBe(false);
+  expect(isOlderVersion('2.0.0', '1.9.9')).toBe(false);
+  expect(isOlderVersion('1.0.0', '')).toBe(false);
+  expect(isOlderVersion('', '1.0.0')).toBe(false);
+  expect(isOlderVersion('1.0.0', 'latest')).toBe(false);
+});
+
+test('app tab is optional, and a missing one comes back as the first tab', () => {
+  const base = { exercises: STARTER.exercises, routine: STARTER.routine };
+  const r = buildRoutine({ ...base, app: 'key,value\nmin_version,1.2.0\nupdate_url,https://example.com/a\n' });
+  expect(r.minVersion).toBe('1.2.0');
+  expect(r.updateUrl).toBe('https://example.com/a');
+  expect(buildRoutine({ ...base, app: STARTER.exercises }).minVersion).toBe('');
+  expect(buildRoutine(base).updateUrl).toBe('');
 });
 
 test('cycle moves on from the last finished day and wraps', () => {

@@ -6,7 +6,7 @@ The app works before you do any of this, using a built-in Push/Pull/Legs routine
 
 ## Connect your routine sheet
 
-1. Create a Google Sheet with three tabs named exactly `exercises`, `routine` and `settings`.
+1. Create a Google Sheet with four tabs named exactly `exercises`, `routine`, `settings` and `app`.
 2. Import the matching file from `sheet-templates/` into each tab, using **File > Import > Replace current sheet**.
 3. Paste YouTube links into the `video_url` column of `exercises`.
 4. Click **Share**, then set **General access** to **Anyone with the link** as **Viewer**.
@@ -48,6 +48,13 @@ Edits to the sheet reach the app the next time it opens, or when you pull down o
 | `bar_kg` | Your bar's weight, for plates and warm-ups. Default 20. |
 | `plate_kg` | A plate size you have. Add one row per size. Defaults to 25, 20, 15, 10, 5, 2.5 and 1.25. |
 
+**app** is optional. Keep it as its own tab, because Google blanks text in a column of mostly numbers.
+
+| Key | Meaning |
+| --- | --- |
+| `min_version` | Shows a **New version available** banner on any older APK, such as `1.1.0`. Use all three numbers. The app still works without updating. |
+| `update_url` | Link the banner opens, such as the APK's Expo build page. Must start with `https://`. |
+
 ## Back up your logs
 
 1. Create a Google Form with these ten **Short answer** questions, using these exact titles, all optional: `id`, `logged_at`, `type`, `day`, `exercise`, `set`, `weight_kg`, `reps`, `record`, `value_cm`.
@@ -70,11 +77,15 @@ bun run templates   # rewrites sheet-templates/ from src/lib/starter.ts
 
 ## Release
 
-Build an installable APK. You need a new build only when native code or dependencies change:
+Build an installable APK. You need a new build only when native code or dependencies change. Bump `version` in `app.json` first, because updates only reach APKs with a matching version:
 
 ```bash
 bunx eas-cli@latest build --platform android --profile preview
 ```
+
+After installing a new APK, set `min_version` in the `app` tab so anyone on an older APK sees the banner.
+
+In the app, tap the sync status on any tab to open **Sync and updates**. **Check for updates** downloads the latest over-the-air update and offers a restart, and the app's own version is shown there.
 
 Push JavaScript and asset changes over the air. The app downloads the update in the background, then applies it on the next launch, so an update can take up to two full restarts to appear:
 

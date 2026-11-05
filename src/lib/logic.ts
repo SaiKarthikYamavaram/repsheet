@@ -11,7 +11,7 @@ export type RoutineItem = {
   superset: string;
 };
 export type Day = { order: number; name: string; items: RoutineItem[] };
-export type Routine = { exercises: Exercise[]; days: Day[]; weeklyTarget: number; barKg: number; plates: number[] };
+export type Routine = { exercises: Exercise[]; days: Day[]; weeklyTarget: number; barKg: number; plates: number[]; minVersion: string; updateUrl: string };
 
 export const DEFAULT_BAR_KG = 20;
 export const DEFAULT_PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
@@ -63,7 +63,7 @@ function number(row: Row, tab: string, column: string): number {
   return value;
 }
 
-export function buildRoutine(csv: { exercises: string; routine: string; settings?: string }): Routine {
+export function buildRoutine(csv: { exercises: string; routine: string; settings?: string; app?: string }): Routine {
   const exercises = table(csv.exercises, 'exercises', ['name', 'muscle', 'video_url', 'cues']).map((r) => {
     if (!r.get('name')) throw new Error(`exercises row ${r.line}: "name" is empty.`);
     return { name: r.get('name'), muscle: r.get('muscle') || 'Other', videoUrl: r.get('video_url'), cues: r.get('cues'), equipment: r.get('equipment').toLowerCase() };
@@ -107,7 +107,16 @@ export function buildRoutine(csv: { exercises: string; routine: string; settings
     const listed = rows.filter((r) => r.get('key') === 'plate_kg').map((r) => number(r, 'settings', 'value')).filter((n) => n > 0);
     if (listed.length) plates = listed;
   }
-  return { exercises, days: [...days.values()].sort((a, b) => a.order - b.order), weeklyTarget, barKg, plates };
+  let minVersion = '';
+  let updateUrl = '';
+  if (csv.app) {
+    // Same fallback as settings: a missing app tab comes back as the first tab.
+    const header = (parseCsv(csv.app)[0] ?? []).map((h) => h.trim().toLowerCase());
+    const rows = header.includes('key') && header.includes('value') ? table(csv.app, 'app', ['key', 'value']) : [];
+    minVersion = rows.find((r) => r.get('key') === 'min_version')?.get('value') ?? '';
+    updateUrl = rows.find((r) => r.get('key') === 'update_url')?.get('value') ?? '';
+  }
+  return { exercises, days: [...days.values()].sort((a, b) => a.order - b.order), weeklyTarget, barKg, plates, minVersion, updateUrl };
 }
 
 type LoggableItem = { superset?: string; sets: { doneAt: number | null }[] };
@@ -171,6 +180,19 @@ export function monthGrid(year: number, month: number): (number | null)[][] {
 export function dayKey(ms: number): string {
   const d = new Date(ms);
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+// Compares dotted versions number by number. Anything unreadable never triggers the banner.
+export function isOlderVersion(current: string, minimum: string): boolean {
+  const parse = (v: string) => v.trim().split('.').map(Number);
+  const a = parse(current);
+  const b = parse(minimum);
+  if (!current.trim() || !minimum.trim() || [...a, ...b].some((n) => !Number.isInteger(n) || n < 0)) return false;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const diff = (a[i] ?? 0) - (b[i] ?? 0);
+    if (diff) return diff < 0;
+  }
+  return false;
 }
 
 export function nextDayIndex(days: Day[], lastOrder: number | null): number {
