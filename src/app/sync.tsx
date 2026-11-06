@@ -22,6 +22,16 @@ function Status({ title, detail, problem, off }: { title: string; detail: string
   );
 }
 
+// Which over-the-air update is running, so you can match it to the EAS dashboard.
+function otaLabel(): string {
+  if (!Updates.isEnabled) return 'Over-the-air updates are off in this build.';
+  if (Updates.isEmbeddedLaunch || !Updates.updateId) return 'Update: the one built into this install';
+  const when = Updates.createdAt ? ` · published ${shortDate(Updates.createdAt.getTime())}, ${clockTime(Updates.createdAt)}` : '';
+  return `Update ${Updates.updateId.slice(0, 8)}${when}${Updates.channel ? ` · ${Updates.channel}` : ''}`;
+}
+
+const clockTime = (d: Date) => `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+
 type UpdateStep = 'idle' | 'checking' | 'downloading' | 'ready' | 'latest' | 'failed';
 
 const UPDATE_TEXT: Record<UpdateStep, string> = {
@@ -63,7 +73,8 @@ function AppUpdates() {
       <Eyebrow style={styles.section}>APP</Eyebrow>
       <Card style={{ gap: 3 }}>
         <Text style={styles.title}>Version {installedVersion()}</Text>
-        <Sub>{Updates.createdAt && !Updates.isEmbeddedLaunch ? `Updated ${shortDate(Updates.createdAt.getTime())}. ` : ''}{UPDATE_TEXT[step]}</Sub>
+        <Sub>{otaLabel()}</Sub>
+        <Sub>{UPDATE_TEXT[step]}</Sub>
       </Card>
       {step === 'ready'
         ? <HeatButton label="RESTART TO UPDATE" onPress={restart} />
