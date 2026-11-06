@@ -293,6 +293,13 @@ export function encodeForm(fields: Record<string, string>): string {
     .join('&');
 }
 
+// WHO adult cut-offs. BMI can't tell muscle from fat, so it reads high on lifters.
+export function bmi(kg: number, heightCm: number): { value: number; label: string } {
+  const value = +(kg / (heightCm / 100) ** 2).toFixed(1);
+  const label = value < 18.5 ? 'Underweight' : value < 25 ? 'Healthy' : value < 30 ? 'Overweight' : 'Obese';
+  return { value, label };
+}
+
 export function fmtKg(n: number): string {
   return String(+n.toFixed(2));
 }

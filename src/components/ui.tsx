@@ -2,7 +2,7 @@ import MaskedViewBase from '@react-native-masked-view/masked-view';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ComponentType, ReactElement, ReactNode, useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, TextStyle, View, ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, TextStyle, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
@@ -160,10 +160,13 @@ export function NumberField({ value, format, onCommit, style, label, decimal }: 
 export function Sheet({ visible, onClose, children }: { visible: boolean; onClose: () => void; children: ReactNode }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable accessibilityLabel="Close" style={styles.scrim} onPress={onClose} />
-      <View style={styles.sheet}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 12 }}>{children}</ScrollView>
-      </View>
+      {/* A modal is its own window, so the app's keyboard resize never reaches it. */}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        <Pressable accessibilityLabel="Close" style={styles.scrim} onPress={onClose} />
+        <View style={styles.sheet}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 12 }}>{children}</ScrollView>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

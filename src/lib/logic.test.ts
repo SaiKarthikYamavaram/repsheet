@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { STARTER } from './starter';
 import {
-  addWeightHint, buildRoutine, dayKey, encodeForm, formEntries, formResponseUrl, isOlderVersion, isRecord, liftsLine, markRecords, monthGrid,
+  addWeightHint, bmi, buildRoutine, dayKey, encodeForm, formEntries, formResponseUrl, isOlderVersion, isRecord, liftsLine, markRecords, monthGrid,
   nextAfterSet, nextDayIndex, parseCsv, platesFor, prefillSets, warmupSets, weekStart, weekStreak, youtubeId,
 } from './logic';
 
@@ -200,4 +200,11 @@ test('form helpers read entry ids and encode answers', () => {
 test('lifts line compresses repeated weights', () => {
   expect(liftsLine([{ kg: 60, reps: 10 }, { kg: 60, reps: 9 }])).toBe('60 × 10, 9');
   expect(liftsLine([{ kg: 60, reps: 10 }, { kg: 62.5, reps: 9 }])).toBe('60 × 10, 62.5 × 9');
+});
+
+test('bmi uses WHO cut-offs', () => {
+  expect(bmi(70, 175)).toEqual({ value: 22.9, label: 'Healthy' });
+  expect(bmi(56, 175).label).toBe('Underweight');
+  expect(bmi(77, 175).label).toBe('Overweight');
+  expect(bmi(92, 175).label).toBe('Obese');
 });

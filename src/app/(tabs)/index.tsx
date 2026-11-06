@@ -8,13 +8,13 @@ import { LogValueSheet } from '@/components/log-value-sheet';
 import { Card, Eyebrow, Hint, HotText, Icon, Num, Ring, Screen, Sub, SyncPill } from '@/components/ui';
 import { FORM_URL } from '@/config';
 import { newAppInfo } from '@/lib/app-version';
-import { bodyweightSeries, lastLifts, loadActiveWorkout, loadStats, logBodyweight, startWorkout, volumeSince, Workout } from '@/lib/db';
-import { addWeightHint, Day, fmtKg, fmtVolume, nextDayIndex, shortDate, weekStart, weekStreak } from '@/lib/logic';
+import { bodyweightSeries, getKv, lastLifts, loadActiveWorkout, loadStats, logBodyweight, measurementSeries, setKv, startWorkout, volumeSince, Workout } from '@/lib/db';
+import { addWeightHint, bmi, Day, fmtKg, fmtVolume, nextDayIndex, shortDate, weekStart, weekStreak } from '@/lib/logic';
 import { requestRestAlerts } from '@/lib/rest-alert';
 import { flushOutbox, getPerson, syncAll, useSync } from '@/lib/sync';
 import { colors, fonts, heat, heatEnd, heatStart } from '@/theme';
 
-type Loaded = { active: Workout | null; finishedAt: number[]; lastOrder: number | null; record: string | null; volume: number; bw: number | null };
+type Loaded = { active: Workout | null; finishedAt: number[]; lastOrder: number | null; record: string | null; volume: number; bw: number | null; waist: number | null };
 
 function load(): Loaded {
   const stats = loadStats();
@@ -27,6 +27,7 @@ function load(): Loaded {
     record: r ? `${r.exercise} ${fmtKg(r.kg)} kg × ${r.reps}` : null,
     volume: volumeSince(weekStart(Date.now())),
     bw: series[0] ?? null,
+    waist: measurementSeries('Waist', 1)[0] ?? null,
   };
 }
 
@@ -44,6 +45,8 @@ export default function Today() {
   const [data, setData] = useState(load);
   const [picked, setPicked] = useState<number | null>(null);
   const [bwOpen, setBwOpen] = useState(false);
+  const [heightOpen, setHeightOpen] = useState(false);
+  const [heightCm, setHeightCm] = useState(() => Number(getKv('height_cm')) || null);
 
   useFocusEffect(useCallback(() => {
     setData(load());
@@ -76,6 +79,16 @@ export default function Today() {
     setBwOpen(false);
     setData(load());
   };
+  const saveHeight = (cm: number) => {
+    if (cm > 0) {
+      setKv('height_cm', String(cm));
+      setHeightCm(cm);
+    }
+    setHeightOpen(false);
+  };
+  const b = data.bw !== null && heightCm ? bmi(data.bw, heightCm) : null;
+  // Under 0.5 is the usual healthy line, and unlike BMI it isn't fooled by muscle.
+  const whtr = data.waist !== null && heightCm ? +(data.waist / heightCm).toFixed(2) : null;
 
   return (
     <Screen>
@@ -151,11 +164,22 @@ export default function Today() {
           <View>
             <Sub>Bodyweight</Sub>
             <Num style={{ fontSize: 18 }}>{data.bw === null ? 'Not logged' : `${fmtKg(data.bw)} kg`}</Num>
+            <Pressable accessibilityRole="button" accessibilityLabel={heightCm ? `Height ${heightCm} cm. Change height` : 'Add height for BMI'} onPress={() => setHeightOpen(true)} hitSlop={8}>
+              {b ? (
+                <Text style={styles.bmi}>BMI {b.value} · <Text style={{ color: b.label === 'Healthy' ? colors.ok : colors.amber }}>{b.label}</Text></Text>
+              ) : (
+                <Text style={[styles.bmi, { color: colors.link }]}>{heightCm ? `Height ${heightCm} cm` : 'Add height for BMI'}</Text>
+              )}
+            </Pressable>
+            {whtr !== null && (
+              <Text style={styles.bmi}>Waist ÷ height {whtr} · <Text style={{ color: whtr < 0.5 ? colors.ok : colors.amber }}>{whtr < 0.5 ? 'Healthy' : 'High'}</Text></Text>
+            )}
           </View>
           <View style={styles.bwAdd}><Icon name="plus" size={14} color={colors.link} /></View>
         </Pressable>
       </ScrollView>
 
+      <LogValueSheet visible={heightOpen} title="Your height" unit="cm" start={heightCm ?? 170} step={1} onClose={() => setHeightOpen(false)} onSave={saveHeight} />
       <LogValueSheet visible={bwOpen} title="Log bodyweight" unit="kg" start={data.bw ?? 70} step={0.1} onClose={() => setBwOpen(false)} onSave={saveBw} />
     </Screen>
   );
@@ -184,5 +208,6 @@ const styles = StyleSheet.create({
   go: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 15, padding: 15, borderRadius: 99, backgroundColor: '#0c0c12' },
   goText: { fontFamily: fonts.display, fontSize: 15, color: '#fff' },
   bw: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.glass, borderRadius: 18, padding: 14 },
+  bmi: { fontFamily: fonts.semibold, fontSize: 12, color: colors.muted, marginTop: 3 },
   bwAdd: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.glass2 },
 });
