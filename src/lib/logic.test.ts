@@ -11,11 +11,13 @@ test('csv handles quotes, commas, doubled quotes and CRLF', () => {
   expect(parseCsv('a,b\r\n"x, y","say ""hi"""\n')).toEqual([['a', 'b'], ['x, y', 'say "hi"']]);
 });
 
-test('starter routine is a valid three-day cycle', () => {
+test('starter routine is the Phase 2 plan with a video for every exercise', () => {
   const r = buildRoutine(STARTER);
   expect(r.days.map((d) => d.name)).toEqual(['Push', 'Pull', 'Legs']);
-  expect(r.weeklyTarget).toBe(4);
-  expect(r.days[0].items[0].exercise).toBe('Bench Press');
+  expect(r.weeklyTarget).toBe(6);
+  expect(r.days[0].items[0].exercise).toBe('Incline Bench Press');
+  expect(r.days.map((d) => d.items.length)).toEqual([8, 7, 7]);
+  expect(r.exercises.every((e) => e.videoUrl.startsWith('https://www.youtube.com/watch?v='))).toBe(true);
 });
 
 test('broken sheets give a readable error', () => {
