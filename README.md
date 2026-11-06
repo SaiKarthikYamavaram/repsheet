@@ -75,13 +75,15 @@ EAS Observe records startup and screen load times, finished-workout counts and s
 
 ```bash
 bun install
-bun run android     # needs a development build, since expo-observe isn't in Expo Go
+bun run android     # builds and runs a development build, since expo-observe isn't in Expo Go
 bun run test
 bun run typecheck
 bun run templates   # rewrites sheet-templates/ from src/lib/starter.ts
 ```
 
 ## Release
+
+Builds use RNRepo prebuilt native libraries on Android to cut build time. Set `DISABLE_RNREPO=true` to build everything from source if a prebuilt library causes trouble.
 
 Build an installable APK. You need a new build only when native code or dependencies change. Bump `version` in `app.json` first, because updates only reach APKs with a matching version:
 

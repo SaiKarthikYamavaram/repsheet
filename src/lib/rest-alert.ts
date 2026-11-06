@@ -7,12 +7,19 @@ export function requestRestAlerts() {
 }
 
 // Fires even with the phone locked, when the screen's own timer isn't running.
+// An alarm clock trigger is never delayed for battery saving, unlike a plain timer, which
+// Android may fire a minute or more late. Without the exact alarm permission it falls back.
 export async function scheduleRestAlert(seconds: number, body: string) {
   await cancelRestAlert();
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: { title: 'Rest is over', body, sound: true },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: Math.max(1, seconds), channelId: 'rest' },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: Date.now() + Math.max(1, seconds) * 1000,
+        channelId: 'rest',
+        delivery: 'alarmClock',
+      },
     });
     setKv('rest-alert', id);
   } catch {

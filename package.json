@@ -4,6 +4,8 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@react-native-masked-view/masked-view": "0.3.2",
+    "@rnrepo/build-tools": "^0.2.2",
+    "@rnrepo/expo-config-plugin": "^0.3.6",
     "expo": "~58.0.23",
     "expo-constants": "~58.0.15",
     "expo-font": "~58.0.11",
@@ -34,7 +36,7 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
+    "android": "expo run:android",
     "test": "bun test src",
     "typecheck": "tsc --noEmit",
     "templates": "bun scripts/write-sheet-templates.ts"
