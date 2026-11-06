@@ -2,23 +2,23 @@
 // Weights start empty because this is your first log.
 export const STARTER = {
   exercises: `name,muscle,video_url,cues,equipment
-Bench Press,Chest,,"Elbows at 45 degrees, bar to mid chest.",barbell
-Incline Press,Chest,,"Bench at 30 degrees, control the way down.",dumbbell
-Shoulder Press,Shoulders,,"Ribs down, press straight overhead.",barbell
-Cable Fly,Chest,,"Slight elbow bend, squeeze at the middle.",cable
-Lateral Raise,Shoulders,,"Lead with the elbows, stop at shoulder height.",dumbbell
-Triceps Pushdown,Arms,,Pin elbows to your sides.,cable
-Lat Pulldown,Back,,Pull elbows down to your ribs.,cable
-Barbell Row,Back,,"Flat back, pull to your lower chest.",barbell
-Seated Row,Back,,"Sit tall, squeeze your shoulder blades.",cable
-Face Pull,Shoulders,,"Pull to your forehead, elbows high.",cable
-Hammer Curl,Arms,,"Palms facing in, no swinging.",dumbbell
-Barbell Curl,Arms,,Keep elbows still at your sides.,barbell
-Squat,Legs,,"Brace first, knees track over toes.",barbell
-Romanian Deadlift,Legs,,"Hips back, soft knees, flat back.",barbell
-Leg Press,Legs,,Lower back stays on the pad.,machine
-Leg Curl,Legs,,Slow on the way back up.,machine
-Calf Raise,Legs,,"Full stretch at the bottom, pause at the top.",machine
+Bench Press,Chest,https://www.youtube.com/watch?v=lWFknlOTbyM,"Elbows at 45 degrees, bar to mid chest.",barbell
+Incline Press,Chest,https://www.youtube.com/watch?v=IP4oeKh1Sd4,"Bench at 30 degrees, control the way down.",dumbbell
+Shoulder Press,Shoulders,https://www.youtube.com/watch?v=KP1sYz2VICk,"Ribs down, press straight overhead.",barbell
+Cable Fly,Chest,https://www.youtube.com/watch?v=8Um35Es-ROE,"Slight elbow bend, squeeze at the middle.",cable
+Lateral Raise,Shoulders,https://www.youtube.com/watch?v=pgrWjBfaFe8,"Lead with the elbows, stop at shoulder height.",dumbbell
+Triceps Pushdown,Arms,https://www.youtube.com/watch?v=-zLyUAo1gMw,Pin elbows to your sides.,cable
+Lat Pulldown,Back,https://www.youtube.com/watch?v=43hWj8mfYGY,Pull elbows down to your ribs.,cable
+Barbell Row,Back,https://www.youtube.com/watch?v=FWJR5Ve8bnQ,"Flat back, pull to your lower chest.",barbell
+Seated Row,Back,https://www.youtube.com/watch?v=vwHG9Jfu4sw,"Sit tall, squeeze your shoulder blades.",cable
+Face Pull,Shoulders,https://www.youtube.com/watch?v=V8dZ3pyiCBo,"Pull to your forehead, elbows high.",cable
+Hammer Curl,Arms,https://www.youtube.com/watch?v=BRVDS6HVR9Q,"Palms facing in, no swinging.",dumbbell
+Barbell Curl,Arms,https://www.youtube.com/watch?v=QZEqB6wUPxQ,Keep elbows still at your sides.,barbell
+Squat,Legs,https://www.youtube.com/watch?v=aOzrA4FgnM0,"Brace first, knees track over toes.",barbell
+Romanian Deadlift,Legs,https://www.youtube.com/watch?v=3VXmecChYYM,"Hips back, soft knees, flat back.",barbell
+Leg Press,Legs,https://www.youtube.com/watch?v=K5n2vg3oZa4,Lower back stays on the pad.,machine
+Leg Curl,Legs,https://www.youtube.com/watch?v=1Tq3QdYUuHs,Slow on the way back up.,machine
+Calf Raise,Legs,https://www.youtube.com/watch?v=SVtg-1loH4c,"Full stretch at the bottom, pause at the top.",machine
 `,
   routine: `day_order,day_name,exercise,sets,rep_min,rep_max,rest_sec,increment_kg,superset
 1,Push,Bench Press,4,8,12,90,2.5,

@@ -20,9 +20,11 @@ export async function scheduleRestAlert(seconds: number, body: string) {
   }
 }
 
+// Cancels the alert if it hasn't fired yet, and clears it from the shade if it has.
 export async function cancelRestAlert() {
   const id = getKv('rest-alert');
   if (!id) return;
   setKv('rest-alert', null);
   await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+  await Notifications.dismissNotificationAsync(id).catch(() => {});
 }

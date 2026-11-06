@@ -2,7 +2,7 @@ import { useKeepAwake } from 'expo-keep-awake';
 import { Observe } from 'expo-observe';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, Alert, Animated, Easing, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from 'react-native';
+import { AccessibilityInfo, Alert, Animated, AppState, Easing, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FormVideo } from '@/components/form-video';
@@ -355,7 +355,9 @@ function RestOverlay({ rest, onExtend, onEnd }: { rest: Rest; onExtend: () => vo
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
-    if (rest.endsAt - now <= 0) {
+    // Android keeps JS running for a while after the screen locks. Ending rest from here
+    // would cancel the notification before it fires, so leave that to the notification.
+    if (rest.endsAt - now <= 0 && AppState.currentState === 'active') {
       Vibration.vibrate([0, 300, 120, 300]);
       onEnd();
     }
