@@ -64,16 +64,19 @@ function number(row: Row, tab: string, column: string): number {
 }
 
 export function buildRoutine(csv: { exercises: string; routine: string; settings?: string; app?: string }): Routine {
+  const seen = new Set<string>();
   const exercises = table(csv.exercises, 'exercises', ['name', 'muscle', 'video_url', 'cues']).map((r) => {
     if (!r.get('name')) throw new Error(`exercises row ${r.line}: "name" is empty.`);
+    // Names link history, so a repeat would quietly split one exercise's log in two.
+    if (seen.has(r.get('name'))) throw new Error(`exercises row ${r.line}: "${r.get('name')}" is listed twice.`);
+    seen.add(r.get('name'));
     return { name: r.get('name'), muscle: r.get('muscle') || 'Other', videoUrl: r.get('video_url'), cues: r.get('cues'), equipment: r.get('equipment').toLowerCase() };
   });
-  const known = new Set(exercises.map((e) => e.name));
   const days = new Map<number, Day>();
   const columns = ['day_order', 'day_name', 'exercise', 'sets', 'rep_min', 'rep_max', 'rest_sec', 'increment_kg'];
   for (const r of table(csv.routine, 'routine', columns)) {
     const name = r.get('exercise');
-    if (!known.has(name)) throw new Error(`routine row ${r.line}: "${name}" is not in the exercises tab.`);
+    if (!seen.has(name)) throw new Error(`routine row ${r.line}: "${name}" is not in the exercises tab.`);
     const order = number(r, 'routine', 'day_order');
     const item: RoutineItem = {
       exercise: name,
@@ -85,6 +88,7 @@ export function buildRoutine(csv: { exercises: string; routine: string; settings
       superset: r.get('superset'),
     };
     if (item.sets < 1) throw new Error(`routine row ${r.line}: "sets" must be at least 1.`);
+    if (item.repMin > item.repMax) throw new Error(`routine row ${r.line}: "rep_min" is more than "rep_max".`);
     if (!days.has(order)) days.set(order, { order, name: r.get('day_name') || `Day ${order}`, items: [] });
     days.get(order)!.items.push(item);
   }
@@ -285,6 +289,10 @@ export function formEntries(html: string): Record<string, string> {
     if (entry != null) out[String(item[1]).trim().toLowerCase()] = String(entry);
   }
   return out;
+}
+
+export function toCsv(rows: string[][]): string {
+  return rows.map((r) => r.map((c) => (/[",\r\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(',')).join('\n');
 }
 
 export function encodeForm(fields: Record<string, string>): string {

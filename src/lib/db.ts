@@ -134,6 +134,10 @@ export function markSetDone(id: string, isRecord: boolean) {
   db.runSync('UPDATE sets SET done_at = ?, is_record = ? WHERE id = ?', Date.now(), isRecord ? 1 : 0, id);
 }
 
+export function unmarkSetDone(id: string) {
+  db.runSync('UPDATE sets SET done_at = NULL, is_record = 0 WHERE id = ?', id);
+}
+
 export function addSet(sessionId: string, item: WorkoutItem) {
   const tail = item.sets[item.sets.length - 1];
   db.runSync(
@@ -159,11 +163,15 @@ export function discardWorkout(sessionId: string) {
 }
 
 // Drops unticked sets, recalculates records in case a ticked set was edited, then queues the backup.
+// Ends at the last ticked set, so a workout you forget to finish until the next morning
+// still lands on the day you trained.
 export function finishWorkout(workout: Workout) {
-  const now = Date.now();
   db.withTransactionSync(() => {
     db.runSync('DELETE FROM sets WHERE session_id = ? AND done_at IS NULL', workout.id);
-    db.runSync('UPDATE sessions SET finished_at = ? WHERE id = ?', now, workout.id);
+    db.runSync(
+      'UPDATE sessions SET finished_at = COALESCE((SELECT MAX(done_at) FROM sets WHERE session_id = ?), ?) WHERE id = ?',
+      workout.id, Date.now(), workout.id,
+    );
     for (const item of workout.items) {
       const done = item.sets.filter((s) => s.doneAt !== null);
       const prior = bestOf(db.getAllSync<Lift>(`SELECT s.kg, s.reps ${FINISHED_SETS} AND w.id != ?`, item.exercise, workout.id));
@@ -237,6 +245,24 @@ export function logMeasurement(part: string, cm: number) {
 
 export function measurementSeries(part: string, limit = 8): number[] {
   return db.getAllSync<{ cm: number }>('SELECT cm FROM measurements WHERE part = ? ORDER BY logged_at DESC LIMIT ?', part, limit).map((r) => r.cm).reverse();
+}
+
+// Everything logged, in the backup form's columns, for keeping a copy without the form.
+export function exportRows(): string[][] {
+  const iso = (ms: number) => new Date(ms).toISOString();
+  const rows = [['logged_at', 'type', 'day', 'exercise', 'set', 'weight_kg', 'reps', 'record', 'value_cm']];
+  for (const w of loadHistory(-1).reverse()) {
+    for (const item of w.items) {
+      item.sets.forEach((s, i) => rows.push([iso(s.doneAt ?? w.finishedAt!), 'set', w.dayName, item.exercise, String(i + 1), String(s.kg), String(s.reps), s.isRecord ? 'yes' : 'no', '']));
+    }
+  }
+  for (const b of db.getAllSync<{ logged_at: number; kg: number }>('SELECT logged_at, kg FROM bodyweight ORDER BY logged_at')) {
+    rows.push([iso(b.logged_at), 'bodyweight', '', '', '', String(b.kg), '', '', '']);
+  }
+  for (const m of db.getAllSync<{ logged_at: number; part: string; cm: number }>('SELECT logged_at, part, cm FROM measurements ORDER BY logged_at')) {
+    rows.push([iso(m.logged_at), 'measurement', '', m.part, '', '', '', '', String(m.cm)]);
+  }
+  return rows;
 }
 
 export function getNote(exercise: string): string {

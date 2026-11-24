@@ -80,10 +80,8 @@ export default function Today() {
     setData(load());
   };
   const saveHeight = (cm: number) => {
-    if (cm > 0) {
-      setKv('height_cm', String(cm));
-      setHeightCm(cm);
-    }
+    setKv('height_cm', String(cm));
+    setHeightCm(cm);
     setHeightOpen(false);
   };
   const b = data.bw !== null && heightCm ? bmi(data.bw, heightCm) : null;

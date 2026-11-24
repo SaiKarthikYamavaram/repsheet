@@ -22,7 +22,7 @@ export function LogValueSheet({ visible, title, unit, start, step, onClose, onSa
         </View>
         <RoundButton hot icon="plus" label="More" size={56} onPress={() => nudge(step)} />
       </View>
-      <HeatButton label="SAVE" onPress={() => onSave(draft)} />
+      <HeatButton label="SAVE" onPress={() => { if (draft > 0) onSave(draft); }} />
       <Ghost label="Cancel" onPress={onClose} />
     </Sheet>
   );

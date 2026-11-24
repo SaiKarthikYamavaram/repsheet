@@ -41,6 +41,3 @@ example
 # generated native folders
 /ios
 /android
-
-# Local signing and Expo credentials
-.env*.local

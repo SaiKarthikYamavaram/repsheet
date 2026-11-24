@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { STARTER } from './starter';
 import {
   addWeightHint, bmi, buildRoutine, dayKey, encodeForm, formEntries, formResponseUrl, isOlderVersion, isRecord, liftsLine, markRecords, monthGrid,
-  nextAfterSet, nextDayIndex, parseCsv, platesFor, prefillSets, warmupSets, weekStart, weekStreak, youtubeId,
+  nextAfterSet, nextDayIndex, parseCsv, platesFor, prefillSets, toCsv, warmupSets, weekStart, weekStreak, youtubeId,
 } from './logic';
 
 const ROUTINE = 'day_order,day_name,exercise,sets,rep_min,rep_max,rest_sec,increment_kg\n';
@@ -26,6 +26,8 @@ test('broken sheets give a readable error', () => {
   expect(() => buildRoutine({ exercises, routine: `${ROUTINE}1,Legs,Squat,many,8,12,60,2.5\n` })).toThrow('routine row 2: "sets" must be a number');
   expect(() => buildRoutine({ exercises, routine: 'day_order\n1\n' })).toThrow('no "day_name" column');
   expect(() => buildRoutine({ exercises, routine: ROUTINE })).toThrow('no workouts');
+  expect(() => buildRoutine({ exercises: `${exercises}Squat,Legs,,\n`, routine: `${ROUTINE}1,Legs,Squat,3,8,12,60,2.5\n` })).toThrow('exercises row 3: "Squat" is listed twice');
+  expect(() => buildRoutine({ exercises, routine: `${ROUTINE}1,Legs,Squat,3,12,8,60,2.5\n` })).toThrow('routine row 2: "rep_min" is more than "rep_max"');
 });
 
 test('blank rows are ignored and days are sorted by order', () => {
@@ -207,4 +209,10 @@ test('bmi uses WHO cut-offs', () => {
   expect(bmi(56, 175).label).toBe('Underweight');
   expect(bmi(77, 175).label).toBe('Overweight');
   expect(bmi(92, 175).label).toBe('Obese');
+});
+
+test('csv export quotes only what needs it and reads back the same', () => {
+  const rows = [['a', 'b, c'], ['say "hi"', 'two\nlines']];
+  expect(toCsv(rows)).toBe('a,"b, c"\n"say ""hi""","two\nlines"');
+  expect(parseCsv(toCsv(rows))).toEqual(rows);
 });

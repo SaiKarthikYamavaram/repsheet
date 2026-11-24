@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import * as Updates from 'expo-updates';
 import { useState } from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Card, Eyebrow, Ghost, H1, HeatButton, Icon, RoundButton, Screen, Sub } from '@/components/ui';
 import { FORM_URL, SHEET_ID } from '@/config';
 import { installedVersion, newAppInfo } from '@/lib/app-version';
-import { shortDate, timeAgo } from '@/lib/logic';
+import { exportRows } from '@/lib/db';
+import { shortDate, timeAgo, toCsv } from '@/lib/logic';
 import { getPerson, setPerson, syncAll, useSync } from '@/lib/sync';
 import { colors, fonts } from '@/theme';
 
@@ -29,6 +30,12 @@ function otaLabel(): string {
   const when = Updates.createdAt ? ` · published ${shortDate(Updates.createdAt.getTime())}, ${clockTime(Updates.createdAt)}` : '';
   return `Update ${Updates.updateId.slice(0, 8)}${when}${Updates.channel ? ` · ${Updates.channel}` : ''}`;
 }
+
+// ponytail: shares the CSV as text, which Android caps near 1 MB (roughly 15,000 sets).
+// Past that, write a file with expo-file-system and share it with expo-sharing, which needs a new build.
+const exportLogs = () => {
+  Share.share({ title: 'Repsheet logs', message: toCsv(exportRows()) }).catch(() => {});
+};
 
 const clockTime = (d: Date) => `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
 
@@ -114,6 +121,7 @@ export default function Sync() {
         <Status title="Routine sheet" detail={routineDetail} problem={!!s.sheetError} off={!SHEET_ID} />
         <Status title="Log backup" detail={backupDetail} problem={!!s.backupError} off={!FORM_URL} />
         <HeatButton label={s.syncing ? 'REFRESHING…' : 'REFRESH NOW'} onPress={syncAll} />
+        <Ghost label="Export logs as CSV" style={{ paddingVertical: 13 }} onPress={exportLogs} />
         <View style={{ gap: 6 }}>
           <Eyebrow>YOUR NAME</Eyebrow>
           <TextInput

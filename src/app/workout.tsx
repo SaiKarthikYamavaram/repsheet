@@ -8,9 +8,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FormVideo } from '@/components/form-video';
 import { PlateBar } from '@/components/plate-bar';
 import { Card, Ghost, H1, H2, HeatButton, Hint, HotText, Icon, NumberField, RoundButton, Ring, Screen, Sheet, Sub } from '@/components/ui';
-import { addSet, bestFinished, discardWorkout, finishWorkout, getKv, getNote, lastLifts, loadActiveWorkout, markSetDone, setKv, setPosition, swapItem, updateSet, Workout, WorkoutItem } from '@/lib/db';
+import { addSet, bestFinished, discardWorkout, finishWorkout, getKv, getNote, lastLifts, loadActiveWorkout, markSetDone, setKv, setPosition, swapItem, unmarkSetDone, updateSet, Workout, WorkoutItem } from '@/lib/db';
 import { addWeightHint, bestOf, clock, fmtKg, isRecord, liftsLine, nextAfterSet, platesFor, RoutineItem, warmupSets } from '@/lib/logic';
-import { cancelRestAlert, scheduleRestAlert } from '@/lib/rest-alert';
+import { cancelRestAlert, scheduleRestAlert, setRestOnScreen } from '@/lib/rest-alert';
 import { flushOutbox, useSync } from '@/lib/sync';
 import { colors, fonts } from '@/theme';
 
@@ -27,6 +27,16 @@ function readRest(): Rest | null {
   }
 }
 
+// If rest ran out while this screen was closed, move on as if it had ended here.
+function resumeWorkout(): Workout | null {
+  const w = loadActiveWorkout();
+  if (!w || !getKv('rest') || readRest()) return w;
+  setKv('rest', null);
+  cancelRestAlert();
+  setPosition(w.id, nextAfterSet(w.items, w.position).position);
+  return loadActiveWorkout();
+}
+
 function nextLabel(target: WorkoutItem, current: WorkoutItem): string {
   const next = target.sets.findIndex((s) => !s.doneAt);
   if (next < 0) return 'Workout almost done';
@@ -40,7 +50,7 @@ export default function WorkoutScreen() {
   useKeepAwake();
   const sync = useSync();
   const insets = useSafeAreaInsets();
-  const [w, setW] = useState<Workout | null>(loadActiveWorkout);
+  const [w, setW] = useState<Workout | null>(resumeWorkout);
   const [sel, setSel] = useState<number | null>(null);
   const [rest, setRest] = useState<Rest | null>(readRest);
   const [celebrate, setCelebrate] = useState<string | null>(null);
@@ -91,7 +101,13 @@ export default function WorkoutScreen() {
   };
   const changeReps = (reps: number) => {
     if (!set) return;
-    updateSet(set.id, { kg: set.kg, reps });
+    updateSet(set.id, { kg: set.kg, reps: Math.max(1, reps) });
+    reload();
+  };
+  const untick = () => {
+    if (!set) return;
+    unmarkSetDone(set.id);
+    setSel(selected);
     reload();
   };
 
@@ -147,13 +163,16 @@ export default function WorkoutScreen() {
     }
   };
 
-  const finish = () => {
-    const doneCount = w.items.flatMap((i) => i.sets).filter((s) => s.doneAt).length;
-    const openCount = w.items.flatMap((i) => i.sets).length - doneCount;
-    const complete = () => {
+  // The top bar always asks, so it's also the way to throw a workout away.
+  // The big button at the end of the last exercise finishes straight away.
+  const finish = (ask: boolean) => {
+    const all = w.items.flatMap((i) => i.sets);
+    const doneCount = all.filter((s) => s.doneAt).length;
+    const openCount = all.length - doneCount;
+    const end = (discard: boolean) => {
       setKv('rest', null);
       cancelRestAlert();
-      if (!doneCount) {
+      if (discard) {
         discardWorkout(w.id);
         router.replace('/');
         return;
@@ -163,12 +182,24 @@ export default function WorkoutScreen() {
       flushOutbox();
       router.replace({ pathname: '/finish', params: { id: w.id } });
     };
-    if (!openCount) { complete(); return; }
-    Alert.alert(
-      doneCount ? 'Finish workout?' : 'Discard workout?',
-      doneCount ? `${openCount} unticked ${openCount === 1 ? 'set' : 'sets'} won't be logged.` : 'You haven’t ticked any sets, so nothing will be logged.',
-      [{ text: 'Keep going', style: 'cancel' }, { text: doneCount ? 'Finish' : 'Discard', style: 'destructive', onPress: complete }],
-    );
+    if (!doneCount) {
+      Alert.alert('Discard workout?', 'You haven’t ticked any sets, so nothing will be logged.', [
+        { text: 'Keep going', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: () => end(true) },
+      ]);
+      return;
+    }
+    if (!ask && !openCount) { end(false); return; }
+    const sets = (n: number) => `${n} ${n === 1 ? 'set' : 'sets'}`;
+    const discard = () => Alert.alert('Discard this workout?', `Your ${sets(doneCount)} ticked so far will be deleted. This can’t be undone.`, [
+      { text: 'Keep it', style: 'cancel' },
+      { text: 'Discard', style: 'destructive', onPress: () => end(true) },
+    ]);
+    Alert.alert('Finish workout?', openCount ? `${sets(openCount)} unticked won’t be logged.` : 'Every set is ticked.', [
+      { text: 'Keep going', style: 'cancel' },
+      { text: 'Discard', style: 'destructive', onPress: discard },
+      { text: 'Finish', onPress: () => end(false) },
+    ]);
   };
 
   const swapTo = (next: RoutineItem) => {
@@ -184,7 +215,7 @@ export default function WorkoutScreen() {
         <View style={styles.top}>
           <RoundButton icon="back" label="Back to Today" onPress={() => router.back()} />
           <Sub style={styles.topTitle}>{w.dayName} · {w.position + 1} of {w.items.length}</Sub>
-          <Ghost label="Finish" onPress={finish} style={{ flexGrow: 0 }} />
+          <Ghost label="Finish" onPress={() => finish(true)} style={{ flexGrow: 0 }} />
         </View>
 
         <ScrollView
@@ -268,10 +299,13 @@ export default function WorkoutScreen() {
               </View>
             </View>
           )}
-          {allDone ? (
-            <HeatButton label={isLast ? 'FINISH WORKOUT' : 'NEXT EXERCISE'} onPress={isLast ? finish : () => move(w.position + 1)} />
-          ) : set?.doneAt ? (
-            <HeatButton label="NEXT SET" onPress={doneSet} />
+          {set?.doneAt ? (
+            <View style={styles.pair}>
+              <Ghost label="Untick" onPress={untick} style={styles.pairBtn} />
+              <HeatButton label={allDone ? 'DONE' : 'NEXT SET'} onPress={doneSet} style={{ flex: 2 }} />
+            </View>
+          ) : allDone ? (
+            <HeatButton label={isLast ? 'FINISH WORKOUT' : 'NEXT EXERCISE'} onPress={isLast ? () => finish(false) : () => move(w.position + 1)} />
           ) : (
             <HeatButton label={`DONE · SET ${selected + 1}`} onPress={doneSet} />
           )}
@@ -352,7 +386,8 @@ function RestOverlay({ rest, onExtend, onEnd }: { rest: Rest; onExtend: () => vo
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(timer);
+    setRestOnScreen(true);
+    return () => { clearInterval(timer); setRestOnScreen(false); };
   }, []);
   useEffect(() => {
     // Android keeps JS running for a while after the screen locks. Ending rest from here

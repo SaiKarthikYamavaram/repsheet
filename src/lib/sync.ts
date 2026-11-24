@@ -87,11 +87,17 @@ export async function refreshRoutine() {
   }
 }
 
+// Android keeps the app alive in the background, so coming back to it also picks up sheet edits.
+// Waits 10 minutes between reads, because the phone wakes the app between every set.
+export function refreshIfStale() {
+  if (Date.now() - (state.fetchedAt ?? 0) > 10 * 60_000) refreshRoutine();
+}
+
 let flushing = false;
 
-async function entryIds(): Promise<Record<string, string>> {
+async function entryIds(fresh = false): Promise<Record<string, string>> {
   const key = `form:${FORM_URL}`;
-  const cachedIds = getKv(key);
+  const cachedIds = fresh ? null : getKv(key);
   if (cachedIds) return JSON.parse(cachedIds);
   const res = await fetchWithTimeout(FORM_URL);
   const ids = formEntries(await res.text());
@@ -107,10 +113,12 @@ export async function flushOutbox() {
   try {
     const rows = outboxRows();
     if (rows.length) {
-      const ids = await entryIds();
+      let ids = await entryIds();
       for (const row of rows) {
         // Added at send time, so sets logged before you enter your name still get labelled.
         const payload: Record<string, string> = { ...JSON.parse(row.payload), person: getPerson() };
+        // A question added to the form after the first backup isn't in the saved IDs yet.
+        if (Object.keys(payload).some((q) => !ids[q])) ids = await entryIds(true);
         const fields: Record<string, string> = {};
         for (const [question, value] of Object.entries(payload)) {
           if (!ids[question]) throw new Error(`Your form has no "${question}" question.`);

@@ -13,7 +13,7 @@ The app works before you do any of this, using a built-in Push/Pull/Legs routine
 5. Copy the ID from the sheet's address, which is the part between `/d/` and `/edit`, into `SHEET_ID` in `src/config.ts`.
 6. Publish an update (see below).
 
-Edits to the sheet reach the app the next time it opens, or when you pull down on the Today tab. If an edit breaks something, the app keeps your last good routine and shows **Sync problem**. Tap it to see which row needs fixing.
+Edits to the sheet reach the app the next time it opens, when you come back to it after 10 minutes away, or when you pull down on the Today tab. If an edit breaks something, the app keeps your last good routine and shows **Sync problem**. Tap it to see which row needs fixing.
 
 ### Tabs
 
@@ -21,7 +21,7 @@ Edits to the sheet reach the app the next time it opens, or when you pull down o
 
 | Column | Meaning |
 | --- | --- |
-| `name` | Exercise name. It links your history, so renaming starts a new history. |
+| `name` | Exercise name. Each name can appear only once. It links your history, so renaming starts a new history. |
 | `muscle` | Group shown in the Library. |
 | `video_url` | YouTube link. Can be empty. |
 | `cues` | Form reminder. Can be empty. |
@@ -35,7 +35,7 @@ Edits to the sheet reach the app the next time it opens, or when you pull down o
 | `day_name` | Workout name, such as Push. |
 | `exercise` | Must match a `name` in `exercises`. |
 | `sets` | Planned sets. |
-| `rep_min`, `rep_max` | Target rep range. Hitting `rep_max` on every set triggers the add-weight hint. |
+| `rep_min`, `rep_max` | Target rep range. `rep_min` can't be more than `rep_max`. Hitting `rep_max` on every set triggers the add-weight hint. |
 | `rest_sec` | Rest timer length in seconds. |
 | `increment_kg` | How much + and − change the weight, and how much the hint adds. |
 | `superset` | Optional. Give neighbouring rows the same label, such as `A`, to pair them. The app moves between them with no rest, then rests after each round. |
@@ -65,7 +65,9 @@ Edits to the sheet reach the app the next time it opens, or when you pull down o
 
 Each person enters their name once on the **Sync and updates** page, and it fills the `person` column, so people sharing the app can filter their own rows. Everyone on the same APK shares one routine sheet and one backup sheet, so anyone with access to the backup sheet can read everyone's logs.
 
-Each ticked set becomes one row when you finish a workout. Bodyweight and body measurements each add a row when you save them. If you're offline, rows wait on the phone and send later. Retries can occasionally repeat a row, and the `id` column lets you spot repeats. Anyone who gets the form link could add junk rows, but they can't read your data and it doesn't change what's on your phone.
+Each ticked set becomes one row when you finish a workout, dated to when you ticked it. Bodyweight and body measurements each add a row when you save them. If you're offline, rows wait on the phone and send later. Retries can occasionally repeat a row, and the `id` column lets you spot repeats. Anyone who gets the form link could add junk rows, but they can't read your data and it doesn't change what's on your phone.
+
+To keep a copy without the form, tap **Export logs as CSV** on the **Sync and updates** page and share it to Drive, Gmail or Keep. It has every finished set, bodyweight and measurement.
 
 ## Performance monitoring
 
