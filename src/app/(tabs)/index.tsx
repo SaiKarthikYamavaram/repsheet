@@ -8,8 +8,8 @@ import { LogValueSheet } from '@/components/log-value-sheet';
 import { Card, Eyebrow, Hint, HotText, Icon, Num, Ring, Screen, Sub, SyncPill } from '@/components/ui';
 import { FORM_URL } from '@/config';
 import { newAppInfo } from '@/lib/app-version';
-import { bodyweightSeries, getKv, lastLifts, loadActiveWorkout, loadStats, logBodyweight, measurementSeries, setKv, startWorkout, volumeSince, Workout } from '@/lib/db';
-import { addWeightHint, bmi, Day, fmtKg, fmtVolume, nextDayIndex, shortDate, weekStart, weekStreak } from '@/lib/logic';
+import { bodyweightSeries, getKv, lastLifts, lastWorkoutOf, loadActiveWorkout, loadStats, logBodyweight, measurementSeries, setKv, startWorkout, volumeSince, Workout } from '@/lib/db';
+import { addWeightHint, bmi, Day, fmtKg, fmtVolume, liftsLine, nextDayIndex, shortDate, weekStart, weekStreak } from '@/lib/logic';
 import { requestRestAlerts } from '@/lib/rest-alert';
 import { flushOutbox, getPerson, syncAll, useSync } from '@/lib/sync';
 import { colors, fonts, heat, heatEnd, heatStart } from '@/theme';
@@ -63,6 +63,7 @@ export default function Today() {
   const dayIndex = Math.min(picked ?? nextDayIndex(days, data.lastOrder), days.length - 1);
   const day = days[dayIndex];
   const hint = data.active ? null : findHint(day);
+  const lastDay = data.active ? null : lastWorkoutOf(day.name);
   const doneSoFar = data.active ? data.active.items.flatMap((i) => i.sets).filter((s) => s.doneAt).length : 0;
 
   const newApp = newAppInfo(sync.routine);
@@ -156,6 +157,18 @@ export default function Today() {
           </Pressable>
         </LinearGradient>
 
+        {lastDay && (
+          <Card style={styles.lastCard}>
+            <Eyebrow>LAST {lastDay.dayName.toUpperCase()} · {shortDate(lastDay.finishedAt!).toUpperCase()} · {Math.max(1, Math.round((lastDay.finishedAt! - lastDay.startedAt) / 60000))} MIN</Eyebrow>
+            {lastDay.items.filter((i) => i.sets.length).map((i) => (
+              <View key={i.position} style={styles.lastRow}>
+                <Text numberOfLines={1} style={styles.lastName}>{i.exercise}</Text>
+                <Text style={styles.lastLifts}>{liftsLine(i.sets)}</Text>
+              </View>
+            ))}
+          </Card>
+        )}
+
         {hint && <Hint title={`${hint.name}: try ${fmtKg(hint.kg)} kg`} detail={`You hit ${hint.reps} reps on every set`} />}
 
         <Pressable accessibilityRole="button" accessibilityLabel="Log bodyweight" onPress={() => setBwOpen(true)} style={styles.bw}>
@@ -205,6 +218,10 @@ const styles = StyleSheet.create({
   heroMeta: { fontFamily: fonts.semibold, fontSize: 14, color: colors.onHeat },
   go: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 15, padding: 15, borderRadius: 99, backgroundColor: '#0c0c12' },
   goText: { fontFamily: fonts.display, fontSize: 15, color: '#fff' },
+  lastCard: { gap: 7 },
+  lastRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 },
+  lastName: { flex: 1, fontFamily: fonts.semibold, fontSize: 13, color: colors.text },
+  lastLifts: { flexShrink: 1, fontFamily: fonts.bold, fontSize: 13, color: colors.text, textAlign: 'right' },
   bw: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.glass, borderRadius: 18, padding: 14 },
   bmi: { fontFamily: fonts.semibold, fontSize: 12, color: colors.muted, marginTop: 3 },
   bwAdd: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.glass2 },

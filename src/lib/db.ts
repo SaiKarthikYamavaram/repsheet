@@ -122,6 +122,12 @@ export function loadWorkout(id: string): Workout | null {
   return row ? loadRow(row) : null;
 }
 
+// The last finished workout with this name, matched by name so it survives reordering the cycle.
+export function lastWorkoutOf(dayName: string): Workout | null {
+  const row = db.getFirstSync<SessionRow>('SELECT * FROM sessions WHERE finished_at IS NOT NULL AND day_name = ? ORDER BY finished_at DESC LIMIT 1', dayName);
+  return row ? loadRow(row) : null;
+}
+
 export function setPosition(sessionId: string, position: number) {
   db.runSync('UPDATE sessions SET position = ? WHERE id = ?', position, sessionId);
 }

@@ -8,30 +8,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FormVideo } from '@/components/form-video';
 import { PlateBar } from '@/components/plate-bar';
 import { Card, Ghost, H1, H2, HeatButton, Hint, HotText, Icon, NumberField, RoundButton, Ring, Screen, Sheet, Sub } from '@/components/ui';
-import { addSet, bestFinished, discardWorkout, finishWorkout, getKv, getNote, lastLifts, loadActiveWorkout, markSetDone, setKv, setPosition, swapItem, unmarkSetDone, updateSet, Workout, WorkoutItem } from '@/lib/db';
+import { addSet, bestFinished, discardWorkout, finishWorkout, getNote, lastLifts, loadActiveWorkout, markSetDone, setPosition, swapItem, unmarkSetDone, updateSet, Workout, WorkoutItem } from '@/lib/db';
 import { addWeightHint, bestOf, clock, fmtKg, isRecord, liftsLine, nextAfterSet, platesFor, RoutineItem, warmupSets } from '@/lib/logic';
-import { cancelRestAlert, scheduleRestAlert, setRestOnScreen } from '@/lib/rest-alert';
+import { cancelRestAlert, getRest, Rest, saveRest, scheduleRestAlert, setRestOnScreen } from '@/lib/rest-alert';
 import { flushOutbox, useSync } from '@/lib/sync';
 import { colors, fonts } from '@/theme';
-
-type Rest = { endsAt: number; total: number; label: string };
 
 const repsText = (n: number) => String(n);
 
 function readRest(): Rest | null {
-  try {
-    const rest: Rest | null = JSON.parse(getKv('rest') ?? 'null');
-    return rest && rest.endsAt > Date.now() ? rest : null;
-  } catch {
-    return null;
-  }
+  const rest = getRest();
+  return rest && rest.endsAt > Date.now() ? rest : null;
 }
 
 // If rest ran out while this screen was closed, move on as if it had ended here.
 function resumeWorkout(): Workout | null {
   const w = loadActiveWorkout();
-  if (!w || !getKv('rest') || readRest()) return w;
-  setKv('rest', null);
+  if (!w || !getRest() || readRest()) return w;
+  saveRest(null);
   cancelRestAlert();
   setPosition(w.id, nextAfterSet(w.items, w.position).position);
   return loadActiveWorkout();
@@ -121,7 +115,7 @@ export default function WorkoutScreen() {
     const label = nextLabel(fresh.items[plan.position], current);
     const next: Rest = { endsAt: Date.now() + current.restSec * 1000, total: current.restSec, label };
     setRest(next);
-    setKv('rest', JSON.stringify(next));
+    saveRest(next);
     scheduleRestAlert(current.restSec, label);
   };
 
@@ -135,7 +129,7 @@ export default function WorkoutScreen() {
 
   const endRest = () => {
     setRest(null);
-    setKv('rest', null);
+    saveRest(null);
     cancelRestAlert();
     afterRest();
   };
@@ -170,7 +164,7 @@ export default function WorkoutScreen() {
     const doneCount = all.filter((s) => s.doneAt).length;
     const openCount = all.length - doneCount;
     const end = (discard: boolean) => {
-      setKv('rest', null);
+      saveRest(null);
       cancelRestAlert();
       if (discard) {
         discardWorkout(w.id);
@@ -353,7 +347,7 @@ export default function WorkoutScreen() {
         const left = Math.max(0, Math.ceil((rest.endsAt - Date.now()) / 1000)) + 30;
         const next = { ...rest, endsAt: Date.now() + left * 1000, total: Math.max(rest.total, left) };
         setRest(next);
-        setKv('rest', JSON.stringify(next));
+        saveRest(next);
         scheduleRestAlert(left, rest.label);
       }} onEnd={endRest} />}
       {celebrate && <Celebrate text={celebrate} onClose={() => {
