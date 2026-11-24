@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { STARTER } from './starter';
 import {
   addWeightHint, bmi, buildRoutine, dayKey, encodeForm, formEntries, formResponseUrl, isOlderVersion, isRecord, liftsLine, markRecords, monthGrid,
-  nextAfterSet, nextDayIndex, parseCsv, platesFor, prefillSets, toCsv, warmupSets, weekStart, weekStreak, youtubeId,
+  nextAfterSet, nextDayIndex, parseCsv, platesFor, prefillSets, prepFor, toCsv, warmupSets, weekStart, weekStreak, youtubeId,
 } from './logic';
 
 const ROUTINE = 'day_order,day_name,exercise,sets,rep_min,rep_max,rest_sec,increment_kg\n';
@@ -215,4 +215,18 @@ test('csv export quotes only what needs it and reads back the same', () => {
   const rows = [['a', 'b, c'], ['say "hi"', 'two\nlines']];
   expect(toCsv(rows)).toBe('a,"b, c"\n"say ""hi""","two\nlines"');
   expect(parseCsv(toCsv(rows))).toEqual(rows);
+});
+
+test('starter has the program warm-up and cool-down for each day', () => {
+  const { prep } = buildRoutine(STARTER);
+  const count = (day: string) => [prepFor(prep, day, 'warmup').length, prepFor(prep, day, 'cooldown').length];
+  expect(['Push', 'Pull', 'Legs'].map(count)).toEqual([[6, 5], [6, 5], [7, 6]]);
+  expect(prepFor(prep, ' push ', 'cooldown')[0]).toMatchObject({ name: 'Doorway chest stretch', seconds: 30, sides: 2 });
+  expect(prepFor(prep, 'Push', 'warmup')[1]).toMatchObject({ name: 'Arm circles', seconds: 0, sides: 1 });
+});
+
+test('a missing warmup tab means no warm-ups, and a bad phase gives a readable error', () => {
+  const base = { exercises: STARTER.exercises, routine: STARTER.routine };
+  expect(buildRoutine({ ...base, warmup: STARTER.exercises }).prep).toEqual([]);
+  expect(() => buildRoutine({ ...base, warmup: 'day_name,phase,name\nPush,stretch,Neck rolls\n' })).toThrow('warmup row 2: "phase" must be warmup or cooldown');
 });

@@ -11,7 +11,10 @@ export type RoutineItem = {
   superset: string;
 };
 export type Day = { order: number; name: string; items: RoutineItem[] };
-export type Routine = { exercises: Exercise[]; days: Day[]; weeklyTarget: number; barKg: number; plates: number[]; minVersion: string; updateUrl: string };
+export type Phase = 'warmup' | 'cooldown';
+// A warm-up move or cool-down stretch. seconds is the hold per side for the timer, 0 when untimed.
+export type PrepItem = { day: string; phase: Phase; name: string; amount: string; how: string; seconds: number; sides: number };
+export type Routine = { exercises: Exercise[]; days: Day[]; weeklyTarget: number; barKg: number; plates: number[]; minVersion: string; updateUrl: string; prep: PrepItem[] };
 
 export const DEFAULT_BAR_KG = 20;
 export const DEFAULT_PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
@@ -55,6 +58,13 @@ function table(csv: string, tab: string, required: string[]): Row[] {
     .filter((r) => !r.blank);
 }
 
+// Google returns the first tab when a tab doesn't exist, so a tab without its columns counts as missing.
+function optionalTable(csv: string | undefined, tab: string, required: string[]): Row[] {
+  if (!csv) return [];
+  const header = (parseCsv(csv)[0] ?? []).map((h) => h.trim().toLowerCase());
+  return required.every((c) => header.includes(c)) ? table(csv, tab, required) : [];
+}
+
 function number(row: Row, tab: string, column: string): number {
   const value = Number(row.get(column));
   if (row.get(column) === '' || !Number.isFinite(value) || value < 0) {
@@ -63,7 +73,7 @@ function number(row: Row, tab: string, column: string): number {
   return value;
 }
 
-export function buildRoutine(csv: { exercises: string; routine: string; settings?: string; app?: string }): Routine {
+export function buildRoutine(csv: { exercises: string; routine: string; settings?: string; app?: string; warmup?: string }): Routine {
   const seen = new Set<string>();
   const exercises = table(csv.exercises, 'exercises', ['name', 'muscle', 'video_url', 'cues']).map((r) => {
     if (!r.get('name')) throw new Error(`exercises row ${r.line}: "name" is empty.`);
@@ -93,34 +103,37 @@ export function buildRoutine(csv: { exercises: string; routine: string; settings
     days.get(order)!.items.push(item);
   }
   if (!days.size) throw new Error('The routine tab has no workouts.');
+  const settings = optionalTable(csv.settings, 'settings', ['key', 'value']);
+  const setting = (key: string) => settings.find((r) => r.get('key') === key);
   let weeklyTarget = 4;
-  let barKg = DEFAULT_BAR_KG;
-  let plates = DEFAULT_PLATES;
-  if (csv.settings) {
-    // Google returns the first tab when a tab doesn't exist, so a missing settings tab just means the defaults.
-    const header = (parseCsv(csv.settings)[0] ?? []).map((h) => h.trim().toLowerCase());
-    const rows = header.includes('key') && header.includes('value') ? table(csv.settings, 'settings', ['key', 'value']) : [];
-    const target = rows.find((r) => r.get('key') === 'weekly_target');
-    if (target) {
-      weeklyTarget = number(target, 'settings', 'value');
-      if (weeklyTarget < 1) throw new Error(`settings row ${target.line}: "weekly_target" must be at least 1.`);
-    }
-    const bar = rows.find((r) => r.get('key') === 'bar_kg');
-    if (bar) barKg = number(bar, 'settings', 'value');
-    // One row per plate size, because Google blanks text in a column of mostly numbers.
-    const listed = rows.filter((r) => r.get('key') === 'plate_kg').map((r) => number(r, 'settings', 'value')).filter((n) => n > 0);
-    if (listed.length) plates = listed;
+  const target = setting('weekly_target');
+  if (target) {
+    weeklyTarget = number(target, 'settings', 'value');
+    if (weeklyTarget < 1) throw new Error(`settings row ${target.line}: "weekly_target" must be at least 1.`);
   }
-  let minVersion = '';
-  let updateUrl = '';
-  if (csv.app) {
-    // Same fallback as settings: a missing app tab comes back as the first tab.
-    const header = (parseCsv(csv.app)[0] ?? []).map((h) => h.trim().toLowerCase());
-    const rows = header.includes('key') && header.includes('value') ? table(csv.app, 'app', ['key', 'value']) : [];
-    minVersion = rows.find((r) => r.get('key') === 'min_version')?.get('value') ?? '';
-    updateUrl = rows.find((r) => r.get('key') === 'update_url')?.get('value') ?? '';
-  }
-  return { exercises, days: [...days.values()].sort((a, b) => a.order - b.order), weeklyTarget, barKg, plates, minVersion, updateUrl };
+  const bar = setting('bar_kg');
+  const barKg = bar ? number(bar, 'settings', 'value') : DEFAULT_BAR_KG;
+  // One row per plate size, because Google blanks text in a column of mostly numbers.
+  const listed = settings.filter((r) => r.get('key') === 'plate_kg').map((r) => number(r, 'settings', 'value')).filter((n) => n > 0);
+  const plates = listed.length ? listed : DEFAULT_PLATES;
+  const app = optionalTable(csv.app, 'app', ['key', 'value']);
+  const minVersion = app.find((r) => r.get('key') === 'min_version')?.get('value') ?? '';
+  const updateUrl = app.find((r) => r.get('key') === 'update_url')?.get('value') ?? '';
+  const prep = optionalTable(csv.warmup, 'warmup', ['day_name', 'phase', 'name']).map((r): PrepItem => {
+    const phase = r.get('phase').toLowerCase();
+    if (phase !== 'warmup' && phase !== 'cooldown') throw new Error(`warmup row ${r.line}: "phase" must be warmup or cooldown.`);
+    if (!r.get('name')) throw new Error(`warmup row ${r.line}: "name" is empty.`);
+    return {
+      day: r.get('day_name'), phase, name: r.get('name'), amount: r.get('amount'), how: r.get('how'),
+      seconds: r.get('seconds') ? number(r, 'warmup', 'seconds') : 0,
+      sides: r.get('sides') ? Math.max(1, number(r, 'warmup', 'sides')) : 1,
+    };
+  });
+  return { exercises, days: [...days.values()].sort((a, b) => a.order - b.order), weeklyTarget, barKg, plates, minVersion, updateUrl, prep };
+}
+
+export function prepFor(prep: PrepItem[], day: string, phase: Phase): PrepItem[] {
+  return prep.filter((p) => p.phase === phase && p.day.toLowerCase() === day.trim().toLowerCase());
 }
 
 type LoggableItem = { superset?: string; sets: { doneAt: number | null }[] };

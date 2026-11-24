@@ -9,7 +9,7 @@ import { FormVideo } from '@/components/form-video';
 import { PlateBar } from '@/components/plate-bar';
 import { Card, Ghost, H1, H2, HeatButton, Hint, HotText, Icon, NumberField, RoundButton, Ring, Screen, Sheet, Sub } from '@/components/ui';
 import { addSet, bestFinished, discardWorkout, finishWorkout, getNote, lastLifts, loadActiveWorkout, markSetDone, setPosition, swapItem, unmarkSetDone, updateSet, Workout, WorkoutItem } from '@/lib/db';
-import { addWeightHint, bestOf, clock, fmtKg, isRecord, liftsLine, nextAfterSet, platesFor, RoutineItem, warmupSets } from '@/lib/logic';
+import { addWeightHint, bestOf, clock, fmtKg, isRecord, liftsLine, nextAfterSet, platesFor, prepFor, RoutineItem, warmupSets } from '@/lib/logic';
 import { cancelRestAlert, getRest, Rest, saveRest, scheduleRestAlert, setRestOnScreen } from '@/lib/rest-alert';
 import { flushOutbox, useSync } from '@/lib/sync';
 import { colors, fonts } from '@/theme';
@@ -174,7 +174,9 @@ export default function WorkoutScreen() {
       finishWorkout(loadActiveWorkout() ?? w);
       Observe.logEvent('workout.finished', { attributes: { sets: doneCount, skippedSets: openCount } });
       flushOutbox();
-      router.replace({ pathname: '/finish', params: { id: w.id } });
+      // Sets are saved before the cool-down, so leaving it early loses nothing.
+      const cooldown = prepFor(sync.routine.prep, w.dayName, 'cooldown').length > 0;
+      router.replace({ pathname: cooldown ? '/prep' : '/finish', params: cooldown ? { phase: 'cooldown', id: w.id } : { id: w.id } });
     };
     if (!doneCount) {
       Alert.alert('Discard workout?', 'You haven’t ticked any sets, so nothing will be logged.', [

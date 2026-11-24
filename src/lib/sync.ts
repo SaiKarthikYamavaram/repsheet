@@ -7,6 +7,10 @@ import { getKv, outboxCount, outboxRemove, outboxRows, setKv } from './db';
 import { buildRoutine, DEFAULT_BAR_KG, DEFAULT_PLATES, encodeForm, formEntries, formResponseUrl, Routine } from './logic';
 import { STARTER } from './starter';
 
+// Until the sheet has a warmup tab, use the program's warm-ups for days named Push, Pull and Legs.
+const starterPrep = buildRoutine(STARTER).prep;
+const withPrep = (r: Routine): Routine => (r.prep?.length ? r : { ...r, prep: starterPrep });
+
 type Cached = { routine: Routine; fetchedAt: number };
 export type SyncState = {
   routine: Routine;
@@ -23,7 +27,7 @@ function loadCached(): Cached | null {
     if (!raw) return null;
     const parsed: Cached = JSON.parse(raw);
     // A routine cached by an older version has no plate settings yet.
-    return { ...parsed, routine: { ...parsed.routine, barKg: parsed.routine.barKg ?? DEFAULT_BAR_KG, plates: parsed.routine.plates ?? DEFAULT_PLATES, minVersion: parsed.routine.minVersion ?? '', updateUrl: parsed.routine.updateUrl ?? '' } };
+    return { ...parsed, routine: withPrep({ ...parsed.routine, barKg: parsed.routine.barKg ?? DEFAULT_BAR_KG, plates: parsed.routine.plates ?? DEFAULT_PLATES, minVersion: parsed.routine.minVersion ?? '', updateUrl: parsed.routine.updateUrl ?? '' }) };
   } catch {
     return null;
   }
@@ -75,8 +79,9 @@ export async function refreshRoutine() {
   if (!SHEET_ID || state.syncing) return;
   update({ syncing: true });
   try {
-    const [exercises, routine, settings, app] = await Promise.all([fetchTab('exercises'), fetchTab('routine'), fetchTab('settings').catch(() => undefined), fetchTab('app').catch(() => undefined)]);
-    const built = buildRoutine({ exercises, routine, settings, app });
+    const optional = (tab: string) => fetchTab(tab).catch(() => undefined);
+    const [exercises, routine, settings, app, warmup] = await Promise.all([fetchTab('exercises'), fetchTab('routine'), optional('settings'), optional('app'), optional('warmup')]);
+    const built = withPrep(buildRoutine({ exercises, routine, settings, app, warmup }));
     const fetchedAt = Date.now();
     setKv('routine', JSON.stringify({ routine: built, fetchedAt }));
     update({ routine: built, fetchedAt, syncing: false, sheetError: null });

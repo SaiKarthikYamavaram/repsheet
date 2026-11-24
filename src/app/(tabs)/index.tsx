@@ -9,7 +9,7 @@ import { Card, Eyebrow, Hint, HotText, Icon, Num, Ring, Screen, Sub, SyncPill } 
 import { FORM_URL } from '@/config';
 import { newAppInfo } from '@/lib/app-version';
 import { bodyweightSeries, getKv, lastLifts, lastWorkoutOf, loadActiveWorkout, loadStats, logBodyweight, measurementSeries, setKv, startWorkout, volumeSince, Workout } from '@/lib/db';
-import { addWeightHint, bmi, Day, fmtKg, fmtVolume, liftsLine, nextDayIndex, shortDate, weekStart, weekStreak } from '@/lib/logic';
+import { addWeightHint, bmi, Day, fmtKg, fmtVolume, liftsLine, nextDayIndex, prepFor, shortDate, weekStart, weekStreak } from '@/lib/logic';
 import { requestRestAlerts } from '@/lib/rest-alert';
 import { flushOutbox, getPerson, syncAll, useSync } from '@/lib/sync';
 import { colors, fonts, heat, heatEnd, heatStart } from '@/theme';
@@ -69,10 +69,13 @@ export default function Today() {
   const newApp = newAppInfo(sync.routine);
   const person = getPerson();
 
+  // A new workout opens on its warm-up when the day has one. Resuming goes straight back to lifting.
   const go = () => {
     requestRestAlerts();
-    if (!data.active) startWorkout(day);
-    router.push('/workout');
+    if (data.active) { router.push('/workout'); return; }
+    const id = startWorkout(day);
+    if (prepFor(sync.routine.prep, day.name, 'warmup').length) router.push({ pathname: '/prep', params: { phase: 'warmup', id } });
+    else router.push('/workout');
   };
   const saveBw = (kg: number) => {
     logBodyweight(kg);

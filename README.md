@@ -6,7 +6,7 @@ The app works before you do any of this, using a built-in Push/Pull/Legs routine
 
 ## Connect your routine sheet
 
-1. Create a Google Sheet with four tabs named exactly `exercises`, `routine`, `settings` and `app`.
+1. Create a Google Sheet with five tabs named exactly `exercises`, `routine`, `settings`, `app` and `warmup`.
 2. Import the matching file from `sheet-templates/` into each tab, using **File > Import > Replace current sheet**.
 3. Paste YouTube links into the `video_url` column of `exercises`.
 4. Click **Share**, then set **General access** to **Anyone with the link** as **Viewer**.
@@ -47,6 +47,18 @@ Edits to the sheet reach the app the next time it opens, when you come back to i
 | `weekly_target` | Workouts per week. Sets the Today ring and the streak. Default 4. |
 | `bar_kg` | Your bar's weight, for plates and warm-ups. Default 20. |
 | `plate_kg` | A plate size you have. Add one row per size. Defaults to 25, 20, 15, 10, 5, 2.5 and 1.25. |
+
+**warmup** is optional. It holds the warm-up a new workout opens on and the cool-down shown after you finish. Until you add it, the app uses the program's built-in warm-ups for days named Push, Pull and Legs, and an empty tab does the same. To add the tab to a sheet you already use, add a new tab named `warmup`, then import `sheet-templates/warmup.csv` into it with **File > Import > Replace current sheet**.
+
+| Column | Meaning |
+| --- | --- |
+| `day_name` | Which day it belongs to. Must match a `day_name` in `routine`, ignoring capitals. |
+| `phase` | `warmup` or `cooldown`. |
+| `name` | The move or stretch, such as Arm circles. |
+| `amount` | Optional. How much, such as `15 reps` or `30 sec each arm`. |
+| `how` | Optional. A short how-to. |
+| `seconds` | Optional. Adds a timer that holds for this many seconds. |
+| `sides` | Optional. Use `2` for moves done on each arm or leg. The timer runs once per side and buzzes when it's time to switch. |
 
 **app** is optional. Keep it as its own tab, because Google blanks text in a column of mostly numbers.
 

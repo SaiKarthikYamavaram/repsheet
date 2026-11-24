@@ -71,4 +71,42 @@ plate_kg,1.25
 min_version,
 update_url,
 `,
+  // From the program's warm-up and cool-down guide. seconds is the hold per side, for the timer.
+  warmup: `day_name,phase,name,amount,how,seconds,sides
+Push,warmup,Treadmill walk or cross trainer,"3 min, light pace",Raises your heart rate and blood flow.,180,
+Push,warmup,Arm circles,15 each direction,"Forward, then backward. Loosens the shoulders.",,
+Push,warmup,Band pull-aparts,15 reps,No band? Just squeeze your shoulder blades. Warms the rear delts and rotator cuff.,,
+Push,warmup,Push-ups,10-15 reps,"Slow and controlled. Wakes up chest, triceps and shoulders.",,
+Push,warmup,Light lateral raises,"15 reps, very light",Warms up the side delts.,,
+Push,warmup,Warm-up set,15 reps at 50%,One light set of your first exercise.,,
+Push,cooldown,Doorway chest stretch,30 sec each arm,"Arm on the door frame at 90°, lean forward through it.",30,2
+Push,cooldown,Overhead triceps stretch,30 sec each arm,"Arm overhead, bend the elbow, push it down with your other hand.",30,2
+Push,cooldown,Cross-body shoulder stretch,30 sec each arm,Pull your arm across your body with the other hand.,30,2
+Push,cooldown,Chest opener,30 sec,"Clasp your hands behind your back, lift your arms and squeeze your shoulder blades.",30,
+Push,cooldown,Neck rolls,30 sec,"Slow circles, both directions.",30,
+Pull,warmup,Rowing machine or cross trainer,"3 min, light pace",Raises your heart rate and wakes up your back.,180,
+Pull,warmup,Arm circles,15 each direction,"Forward, then backward. Loosens the shoulders.",,
+Pull,warmup,Cat-cow,10 slow reps,On hands and knees. Loosens the spine.,,
+Pull,warmup,Band pull-aparts,15 reps,Wakes up the rear delts and rhomboids.,,
+Pull,warmup,Straight arm pulldown,"15 reps, light",Light cable or band. Wakes up the lats.,,
+Pull,warmup,Warm-up set,15 reps at 50%,One light set of your first exercise.,,
+Pull,cooldown,Lat stretch,30 sec each side,Grab a pole or door frame overhead and lean away from it.,30,2
+Pull,cooldown,Child's pose,45 sec,"Kneel, sit back on your heels, reach your arms forward on the floor.",45,
+Pull,cooldown,Biceps wall stretch,30 sec each arm,"Arm straight against the wall, palm flat, turn your body away.",30,2
+Pull,cooldown,Upper trap stretch,30 sec each side,Tilt your head to the side and gently pull with your hand.,30,2
+Pull,cooldown,Thread the needle,30 sec each side,"On all fours, reach one arm under your body and rotate.",30,2
+Legs,warmup,Incline walk or cycling,"3-5 min, moderate pace",Raises your heart rate and warms up your legs.,180,
+Legs,warmup,Hip circles,"10 each direction, each leg",Standing. Loosens the hips.,,
+Legs,warmup,Leg swings,"10 each direction, each leg","Front to back, then side to side.",,
+Legs,warmup,Glute bridges,15 reps,"Bodyweight, squeeze at the top.",,
+Legs,warmup,Bodyweight squats,15 reps,"Slow, full depth. Grooves the squat pattern.",,
+Legs,warmup,Walking lunges,10 each leg,"Bodyweight. Warms knees, hips, quads and glutes.",,
+Legs,warmup,Squat warm-up sets,"15 reps bar only, then 10 at 50%",Two light sets before your working sets.,,
+Legs,cooldown,Standing quad stretch,30 sec each leg,"Stand on one leg, pull your foot to your glute, knees together.",30,2
+Legs,cooldown,Standing hamstring stretch,30 sec each leg,"Foot on a bench, lean forward with a straight back.",30,2
+Legs,cooldown,Pigeon pose,45 sec each leg,"Front leg bent at 90°, back leg straight behind you, lean forward.",45,2
+Legs,cooldown,Hip flexor stretch,30 sec each leg,"Lunge with your back knee down, push your hips forward.",30,2
+Legs,cooldown,Butterfly stretch,45 sec,"Sit with the soles of your feet together, gently push your knees down.",45,
+Legs,cooldown,Calf stretch,30 sec each leg,"Foot against the wall, lean in with your heel down.",30,2
+`,
 };
