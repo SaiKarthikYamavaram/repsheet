@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 
 import { STARTER } from './starter';
-import { angle, Frame, Pt, Rep, repCounter, ruleFor, RULES } from './pose';
+import { angle, Frame, Pt, Rep, repCounter, ruleFor, RULES, setSummary, TOO_FAST } from './pose';
 
 // A side-on body, facing right, with the given knee angle and torso lean. Both sides overlap.
 function squatter(kneeDeg: number, leanDeg = 20): Frame {
@@ -17,11 +17,12 @@ function squatter(kneeDeg: number, leanDeg = 20): Frame {
   return f;
 }
 
-// Smooth reps from 175° down to the bottom and back.
-function run(bottoms: number[], lean = 20): Rep[] {
+// Smooth reps from 175° down to the bottom and back, at 20 frames a second unless ms says otherwise.
+function run(bottoms: number[], lean = 20, ms = 50): Rep[] {
   const step = repCounter(RULES.squat);
   const reps: Rep[] = [];
-  const feed = (k: number) => { const r = step(squatter(k, lean)).rep; if (r) reps.push(r); };
+  let t = 0;
+  const feed = (k: number) => { const r = step(squatter(k, lean), (t += ms)).rep; if (r) reps.push(r); };
   for (const bottom of bottoms) {
     for (let k = 175; k > bottom; k -= 5) feed(k);
     for (let k = bottom; k <= 175; k += 5) feed(k);
@@ -35,16 +36,36 @@ test('angle', () => {
   expect(angle(...squatter(95).slice(23, 28).filter((_, i) => i % 2 === 0) as [Pt, Pt, Pt])).toBeCloseTo(95);
 });
 
+const fixes = (r: Rep) => r.faults.map((f) => f.fix);
+
 test('deep, upright squats are good reps', () => {
-  expect(run([70, 70, 70])).toEqual([{ n: 1, faults: [] }, { n: 2, faults: [] }, { n: 3, faults: [] }]);
+  expect(run([70, 70, 70]).map((r) => [r.n, r.faults])).toEqual([[1, []], [2, []], [3, []]]);
 });
 
-test('a half squat counts but says go deeper', () => {
-  expect(run([125])).toEqual([{ n: 1, faults: ['Go deeper. Hips down to knee level.'] }]);
+test('a half squat counts, says go deeper and by how much', () => {
+  const [rep] = run([125], 20, 100);
+  expect(rep.faults).toEqual([{ fix: 'Go deeper. Hips down to knee level.', detail: expect.stringMatching(/^Thigh above parallel \d+°, keep it under 10°$/) }]);
 });
 
-test('leaning too far forward is flagged', () => {
-  expect(run([70], 65)[0].faults).toEqual(['Chest up. You are leaning too far forward.']);
+test('leaning too far forward is flagged with the angle', () => {
+  expect(run([70], 65)[0].faults).toEqual([{ fix: 'Chest up. You are leaning too far forward.', detail: expect.stringMatching(/^Torso lean 6\d°, keep it under 55°$/) }]);
+});
+
+test('rushed reps are flagged', () => {
+  expect(fixes(run([70], 20, 15)[0])).toEqual([TOO_FAST]);
+});
+
+test('facing the camera on a side-on exercise asks you to turn', () => {
+  const front = squatter(170).map((p, i) => ([11, 23, 25, 27].includes(i) ? [p[0] - 250, p[1], p[2]] : p) as Pt);
+  expect(repCounter(RULES.squat)(front, 0)).toEqual({ visible: false, hint: 'Turn side-on to the camera' });
+});
+
+test('a set summary counts each fix, most common first', () => {
+  const reps = [...run([70, 125], 20, 100), ...run([125], 65, 100)];
+  expect(setSummary(reps)).toEqual([
+    { fix: 'Go deeper. Hips down to knee level.', count: 2 },
+    { fix: 'Chest up. You are leaning too far forward.', count: 1 },
+  ]);
 });
 
 test('fidgeting is not a rep', () => {
@@ -54,17 +75,18 @@ test('fidgeting is not a rep', () => {
 test('turning around before standing up is a rep that says stand up', () => {
   const step = repCounter(RULES.squat);
   const reps: Rep[] = [];
-  const feed = (k: number) => { const r = step(squatter(k)).rep; if (r) reps.push(r); };
+  let t = 0;
+  const feed = (k: number) => { const r = step(squatter(k), (t += 50)).rep; if (r) reps.push(r); };
   for (let k = 175; k >= 70; k -= 5) feed(k);
   for (let k = 70; k <= 130; k += 5) feed(k);
   for (let k = 130; k >= 70; k -= 5) feed(k);
-  expect(reps).toEqual([{ n: 1, faults: ['Stand all the way up between reps.'] }]);
+  expect(reps.map(fixes)).toEqual([['Stand all the way up between reps.']]);
 });
 
 test('out of view frames are ignored', () => {
   const step = repCounter(RULES.squat);
-  expect(step(null)).toEqual({ visible: false });
-  expect(step(squatter(170).map(([x, y]) => [x, y, 0.1] as Pt))).toEqual({ visible: false });
+  expect(step(null, 0)).toEqual({ visible: false });
+  expect(step(squatter(170).map(([x, y]) => [x, y, 0.1] as Pt), 50)).toEqual({ visible: false });
 });
 
 test('sheet names map to the right checks', () => {

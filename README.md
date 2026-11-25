@@ -69,7 +69,7 @@ Edits to the sheet reach the app the next time it opens, when you come back to i
 
 ## Check your form
 
-Tap **Check my form with the camera** on an exercise or during a workout. Prop the phone where the screen says, step into view, and do your set. The app counts reps, outlines your body in green or red, and says what to fix after each rep. **How to do it** lists the correct form.
+Tap **Check my form with the camera** on an exercise or during a workout. Prop the phone where the screen says, step into view, and do your set. The app counts reps, outlines your body in green or red, and says what to fix after each rep, with the angle it measured and the limit, such as *Torso lean 62°, keep it under 55°*. It also flags reps faster than 1 second, tells you to turn side-on or face the camera when you're set up the wrong way, and sums up the most common faults in **This set**. **How to do it** lists the correct form.
 
 It works for squats, lunges, Romanian deadlifts, presses, flys, curls, rows, pulldowns, face pulls, triceps moves, leg machines and back extensions, matched by the words in the exercise name. Shrugs and calf raises move too little for the camera to judge, so they have no check. The check reads joint angles only, so it can't see grip, breathing or a rounded back.
 

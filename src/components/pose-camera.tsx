@@ -48,7 +48,7 @@ try {
           g.beginPath(); g.moveTo(p[a][0], p[a][1]); g.lineTo(p[b][0], p[b][1]); g.stroke();
         }
       }
-      post({ type: 'frame', p });
+      post({ type: 'frame', p, t: Math.round(performance.now()) });
     }
     requestAnimationFrame(loop);
   };
@@ -62,7 +62,7 @@ export type CameraHandle = { injectJavaScript: (js: string) => void };
 // The package types WebView as a plain function component, but it does take a ref.
 const WebView = WebViewBase as unknown as ComponentType<WebViewProps & { ref?: Ref<CameraHandle> }>;
 
-export type CameraMessage = { type: 'ready' } | { type: 'frame'; p: Frame | null } | { type: 'error'; message: string };
+export type CameraMessage = { type: 'ready' } | { type: 'frame'; p: Frame | null; t: number } | { type: 'error'; message: string };
 
 export const PoseCamera = forwardRef<CameraHandle, { facing: 'user' | 'environment'; onMessage: (m: CameraMessage) => void }>(
   function PoseCamera({ facing, onMessage }, ref) {

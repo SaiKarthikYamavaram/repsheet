@@ -6,7 +6,7 @@ import { Linking, PermissionsAndroid, ScrollView, StyleSheet, Text, View } from 
 
 import { CameraHandle, CameraMessage, PoseCamera } from '@/components/pose-camera';
 import { Body, Card, Eyebrow, Ghost, H2, RoundButton, Screen, Sub } from '@/components/ui';
-import { Rep, repCounter, ruleFor } from '@/lib/pose';
+import { Rep, repCounter, ruleFor, setSummary } from '@/lib/pose';
 import { colors, fonts } from '@/theme';
 
 type Status = 'asking' | 'denied' | 'loading' | 'live' | 'error';
@@ -19,7 +19,7 @@ export default function FormCheck() {
   const [status, setStatus] = useState<Status>('asking');
   const [error, setError] = useState('');
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
-  const [inView, setInView] = useState(false);
+  const [view, setView] = useState<{ visible: boolean; hint?: string }>({ visible: false });
   const [reps, setReps] = useState<Rep[]>([]);
   const web = useRef<CameraHandle>(null);
   const [count, setCount] = useState(() => (rule ? repCounter(rule) : null));
@@ -35,14 +35,14 @@ export default function FormCheck() {
     if (m.type === 'ready') setStatus('live');
     else if (m.type === 'error') { setError(m.message); setStatus(/NotAllowed|Permission/i.test(m.message) ? 'denied' : 'error'); }
     else if (count) {
-      const step = count(m.p);
-      setInView((v) => (v === step.visible ? v : step.visible));
+      const step = count(m.p, m.t);
+      setView((v) => (v.visible === step.visible && v.hint === step.hint ? v : { visible: step.visible, hint: step.hint }));
       const rep = step.rep;
       if (!rep) return;
       setReps((r) => [rep, ...r]);
       web.current?.injectJavaScript(`window.tone=${JSON.stringify(rep.faults.length ? colors.coral : colors.ok)};true;`);
       Speech.stop();
-      Speech.speak(`${rep.n}. ${rep.faults[0] ?? 'Good'}`);
+      Speech.speak(`${rep.n}. ${rep.faults[0]?.fix ?? 'Good'}`);
     }
   };
 
@@ -51,6 +51,7 @@ export default function FormCheck() {
 
   const last = reps[0];
   const good = reps.filter((r) => r.faults.length === 0).length;
+  const summary = setSummary(reps);
 
   return (
     <Screen>
@@ -71,7 +72,7 @@ export default function FormCheck() {
               <Text style={styles.banner}>
                 {status === 'asking' ? 'Asking for the camera…'
                   : status === 'loading' ? 'Starting the camera…'
-                  : status === 'live' && !inView ? 'Step into view' : ''}
+                  : status === 'live' && !view.visible ? (view.hint ?? 'Step into view') : ''}
               </Text>
             </View>
             {status === 'denied' && (
@@ -95,12 +96,24 @@ export default function FormCheck() {
                 <Eyebrow>REP {last.n} · {good} OF {reps.length} GOOD</Eyebrow>
                 {last.faults.length === 0
                   ? <H2 style={{ color: colors.ok }}>Good rep</H2>
-                  : last.faults.map((f) => <H2 key={f} style={styles.fault}>{f}</H2>)}
+                  : last.faults.map((f) => (
+                    <View key={f.fix}>
+                      <H2 style={styles.fault}>{f.fix}</H2>
+                      {f.detail ? <Sub>{f.detail}</Sub> : null}
+                    </View>
+                  ))}
+                <Sub>{last.seconds} s</Sub>
               </Card>
             ) : (
               <Card><Eyebrow>SET UP</Eyebrow><Body style={{ marginTop: 4 }}>{rule.setup}</Body></Card>
             )}
-            {reps.length > 0 && <Ghost label="Reset count" onPress={restart} />}
+            {summary.length > 0 && (
+              <Card style={{ gap: 4 }}>
+                <Eyebrow>THIS SET</Eyebrow>
+                {summary.map((x) => <Body key={x.fix}>{x.fix} <Text style={styles.times}>{x.count} of {reps.length} reps</Text></Body>)}
+              </Card>
+            )}
+            {reps.length > 0 && <Ghost label="Start a new set" onPress={restart} />}
             <Card style={{ gap: 6 }}>
               <Eyebrow>HOW TO DO IT</Eyebrow>
               {rule.how.map((h, i) => <Body key={h}>{i + 1}. {h}</Body>)}
@@ -124,5 +137,6 @@ const styles = StyleSheet.create({
   center: { position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
   pad: { padding: 16, gap: 12 },
   feedback: { gap: 6, borderWidth: 1.5 },
+  times: { fontFamily: fonts.semibold, color: colors.muted },
   fault: { color: colors.hintText, fontSize: 20, lineHeight: 25 },
 });
