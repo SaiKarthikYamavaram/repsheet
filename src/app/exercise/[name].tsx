@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { FormVideo } from '@/components/form-video';
-import { Body, Card, Eyebrow, H1, RoundButton, Screen, Sub } from '@/components/ui';
+import { Body, Card, Eyebrow, Ghost, H1, RoundButton, Screen, Sub } from '@/components/ui';
 import { bestFinished, getNote, lastLifts, setNote } from '@/lib/db';
 import { fmtKg, liftsLine } from '@/lib/logic';
+import { ruleFor } from '@/lib/pose';
 import { useSync } from '@/lib/sync';
 import { colors, fonts } from '@/theme';
 
@@ -27,6 +28,7 @@ export default function ExerciseScreen() {
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
           <FormVideo rounded url={info?.videoUrl ?? ''} />
           <H1>{name}</H1>
+          {ruleFor(name) && <Ghost label="Check my form with the camera" onPress={() => router.push({ pathname: '/form-check', params: { name } })} />}
           {info?.cues ? <Card><Eyebrow>FORM CUE</Eyebrow><Body style={{ marginTop: 4 }}>{info.cues}</Body></Card> : null}
           {last.length > 0 && <Card style={styles.spread}><Sub>Last time</Sub><Text style={styles.value}>{liftsLine(last)}</Text></Card>}
           {best && <Card style={styles.spread}><Sub>Best set</Sub><Text style={styles.value}>{fmtKg(best.kg)} kg × {best.reps}</Text></Card>}

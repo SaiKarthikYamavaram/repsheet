@@ -10,6 +10,7 @@ import { PlateBar } from '@/components/plate-bar';
 import { Card, Ghost, H1, H2, HeatButton, Hint, HotText, Icon, NumberField, RoundButton, Ring, Screen, Sheet, Sub } from '@/components/ui';
 import { addSet, bestFinished, discardWorkout, finishWorkout, getNote, lastLifts, loadActiveWorkout, markSetDone, setPosition, swapItem, unmarkSetDone, updateSet, Workout, WorkoutItem } from '@/lib/db';
 import { addWeightHint, bestOf, clock, fmtKg, isRecord, liftsLine, nextAfterSet, platesFor, prepFor, RoutineItem, warmupSets } from '@/lib/logic';
+import { ruleFor } from '@/lib/pose';
 import { cancelRestAlert, getRest, Rest, saveRest, scheduleRestAlert, setRestOnScreen } from '@/lib/rest-alert';
 import { flushOutbox, useSync } from '@/lib/sync';
 import { colors, fonts } from '@/theme';
@@ -249,6 +250,7 @@ export default function WorkoutScreen() {
             {hintKg !== null && <Hint title={`Try ${fmtKg(hintKg)} kg`} detail={`You hit ${item.repMax} reps on every set last time`} />}
             {note !== '' && <Sub>Your note: {note}</Sub>}
             {info?.cues ? <Sub>{info.cues}</Sub> : null}
+            {ruleFor(item.exercise) && <Ghost label="Check my form with the camera" onPress={() => router.push({ pathname: '/form-check', params: { name: item.exercise } })} />}
 
             <View style={{ gap: 6 }}>
               {item.sets.map((s, i) => (

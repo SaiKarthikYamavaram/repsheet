@@ -67,6 +67,14 @@ Edits to the sheet reach the app the next time it opens, when you come back to i
 | `min_version` | Shows a **New version available** banner on any older APK, such as `1.1.0`. Use all three numbers. The app still works without updating. |
 | `update_url` | Link the banner opens, such as the APK's Expo build page. Must start with `https://`. |
 
+## Check your form
+
+Tap **Check my form with the camera** on an exercise or during a workout. Prop the phone where the screen says, step into view, and do your set. The app counts reps, outlines your body in green or red, and says what to fix after each rep. **How to do it** lists the correct form.
+
+It works for squats, lunges, Romanian deadlifts, presses, flys, curls, rows, pulldowns, face pulls, triceps moves, leg machines and back extensions, matched by the words in the exercise name. Shrugs and calf raises move too little for the camera to judge, so they have no check. The check reads joint angles only, so it can't see grip, breathing or a rounded back.
+
+Everything runs on the phone and nothing is recorded. The first check needs internet to download the pose model.
+
 ## Back up your logs
 
 1. Create a Google Form with these eleven **Short answer** questions, using these exact titles, all optional: `id`, `logged_at`, `type`, `day`, `exercise`, `set`, `weight_kg`, `reps`, `record`, `value_cm`, `person`.
