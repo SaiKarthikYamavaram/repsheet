@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { STARTER } from './starter';
 import {
-  addWeightHint, bmi, buildRoutine, dayKey, encodeForm, formEntries, formResponseUrl, isOlderVersion, isRecord, liftsLine, markRecords, monthGrid,
+  addWeightHint, bmi, buildRoutine, dayKey, encodeForm, formEntries, formResponseUrl, isApkLink, isOlderVersion, isRecord, liftsLine, markRecords, monthGrid,
   nextAfterSet, nextDayIndex, parseCsv, platesFor, prefillSets, prepFor, toCsv, warmupSets, weekStart, weekStreak, youtubeId,
 } from './logic';
 
@@ -229,4 +229,11 @@ test('a missing warmup tab means no warm-ups, and a bad phase gives a readable e
   const base = { exercises: STARTER.exercises, routine: STARTER.routine };
   expect(buildRoutine({ ...base, warmup: STARTER.exercises }).prep).toEqual([]);
   expect(() => buildRoutine({ ...base, warmup: 'day_name,phase,name\nPush,stretch,Neck rolls\n' })).toThrow('warmup row 2: "phase" must be warmup or cooldown');
+});
+
+test('only direct APK links install inside the app', () => {
+  expect(isApkLink('https://expo.dev/artifacts/eas/abc123.apk')).toBe(true);
+  expect(isApkLink('https://example.com/Repsheet.APK?download=1')).toBe(true);
+  expect(isApkLink('https://expo.dev/accounts/sai21/projects/repsheet/builds/abc')).toBe(false);
+  expect(isApkLink('https://example.com/apk')).toBe(false);
 });

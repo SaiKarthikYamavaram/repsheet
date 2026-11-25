@@ -65,7 +65,7 @@ Edits to the sheet reach the app the next time it opens, when you come back to i
 | Key | Meaning |
 | --- | --- |
 | `min_version` | Shows a **New version available** banner on any older APK, such as `1.1.0`. Use all three numbers. The app still works without updating. |
-| `update_url` | Link the banner opens, such as the APK's Expo build page. Must start with `https://`. |
+| `update_url` | Where the new version comes from. Must start with `https://`. Use the APK's direct download link, ending in `.apk`, and **Download and install** downloads it inside the app and opens Android's installer. Any other link, such as the Expo build page, opens in the browser. |
 
 ## Check your form
 
@@ -113,7 +113,7 @@ Build an installable APK. You need a new build only when native code or dependen
 bunx eas-cli@latest build --platform android --profile preview
 ```
 
-After installing a new APK, set `min_version` in the `app` tab so anyone on an older APK sees the banner.
+After the build finishes, put its version in `min_version` and its APK link in `update_url`, both in the `app` tab. To get the APK link, run `bunx eas-cli@latest build:view <build id> --json` and copy `applicationArchiveUrl`. Anyone on an older APK then sees the banner, and **Download and install** on **Sync and updates** installs the new version over the old one, keeping their logs. The first time, Android asks you to allow installs from Repsheet.
 
 In the app, tap the sync status on any tab to open **Sync and updates**. **Check for updates** downloads the latest over-the-air update and offers a restart, and the app's own version is shown there.
 

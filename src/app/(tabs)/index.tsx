@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useObserve } from 'expo-observe';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { LogValueSheet } from '@/components/log-value-sheet';
 import { Card, Eyebrow, Hint, HotText, Icon, Num, Ring, Screen, Sub, SyncPill } from '@/components/ui';
@@ -110,7 +110,7 @@ export default function Today() {
         )}
 
         {newApp.needed && (
-          <Pressable accessibilityRole={newApp.url ? 'link' : undefined} disabled={!newApp.url} onPress={() => Linking.openURL(newApp.url)}>
+          <Pressable accessibilityRole={newApp.url ? 'link' : undefined} disabled={!newApp.url} onPress={() => router.push('/sync')}>
             <Hint title="New version available" detail={newApp.url ? 'Tap to download and install it.' : 'Ask for the latest install link.'} />
           </Pressable>
         )}

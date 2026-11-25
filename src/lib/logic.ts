@@ -355,3 +355,7 @@ export function liftsLine(lifts: Lift[]): string {
     ? `${fmtKg(lifts[0].kg)} × ${lifts.map((l) => l.reps).join(', ')}`
     : lifts.map((l) => `${fmtKg(l.kg)} × ${l.reps}`).join(', ');
 }
+
+// A direct link to an APK file, such as an EAS build's download link, installs inside the app.
+// Any other link, such as a build page, opens in the browser instead.
+export const isApkLink = (url: string) => /\.apk$/i.test(url.split(/[?#]/)[0]);

@@ -5,9 +5,10 @@ import { Linking, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'r
 
 import { Card, Eyebrow, Ghost, H1, HeatButton, Icon, RoundButton, Screen, Sub } from '@/components/ui';
 import { FORM_URL, SHEET_ID } from '@/config';
+import { installApk } from '@/lib/apk-update';
 import { installedVersion, newAppInfo } from '@/lib/app-version';
 import { exportRows } from '@/lib/db';
-import { shortDate, timeAgo, toCsv } from '@/lib/logic';
+import { isApkLink, shortDate, timeAgo, toCsv } from '@/lib/logic';
 import { getPerson, setPerson, syncAll, useSync } from '@/lib/sync';
 import { colors, fonts } from '@/theme';
 
@@ -74,6 +75,20 @@ function AppUpdates() {
   const restart = () => {
     Updates.reloadAsync().catch(() => setStep('failed'));
   };
+  // null while idle, 0 to 1 while downloading the new APK.
+  const [apk, setApk] = useState<number | null>(null);
+  const [apkError, setApkError] = useState('');
+  const getApk = async () => {
+    if (!isApkLink(newApp.url)) { Linking.openURL(newApp.url); return; }
+    setApk(0);
+    setApkError('');
+    try {
+      await installApk(newApp.url, setApk);
+    } catch {
+      setApkError('Couldn’t download the new version. Check your connection, then try again.');
+    }
+    setApk(null);
+  };
 
   return (
     <>
@@ -88,8 +103,10 @@ function AppUpdates() {
         : <Ghost label={busy ? 'Please wait…' : 'Check for updates'} disabled={busy} style={{ paddingVertical: 13 }} onPress={check} />}
       {newApp.needed && (
         <>
-          <Status title="New app version available" detail={newApp.url ? 'This one needs a fresh install. Installing over the top keeps your logs.' : 'This one needs a fresh install. Ask for the latest install link.'} problem />
-          {newApp.url !== '' && <HeatButton label="DOWNLOAD NEW VERSION" onPress={() => Linking.openURL(newApp.url)} />}
+          <Status title={`Version ${routine.minVersion} available`} detail={apkError || (newApp.url ? 'This one needs a fresh install. Installing over the top keeps your logs.' : 'This one needs a fresh install. Ask for the latest install link.')} problem />
+          {newApp.url !== '' && (apk === null
+            ? <HeatButton label="DOWNLOAD AND INSTALL" onPress={getApk} />
+            : <Ghost label={`Downloading… ${Math.round(apk * 100)}%`} disabled style={{ paddingVertical: 13 }} onPress={() => {}} />)}
         </>
       )}
     </>

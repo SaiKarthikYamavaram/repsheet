@@ -21,7 +21,8 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.USE_EXACT_ALARM",
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.REQUEST_INSTALL_PACKAGES"
       ],
       "softwareKeyboardLayoutMode": "resize",
       "runtimeVersion": {
